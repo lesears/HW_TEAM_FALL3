@@ -1,0 +1,24 @@
+libname survival 'C:\Users\turne\OneDrive\Documents\Fall 3\Survival\Data';
+
+/* import */
+*proc import
+	datafile = 'C:\Users\turne\OneDrive\Documents\Fall 3\Survival\Data\katrina.csv'
+	dbms = csv
+	out = survival.katrina;
+*run;
+
+/* summary stats / hazard / difference test */
+proc lifetest data= survival.katrina plots=s(cl cb=ep) method=life;
+	time hour*survive(1);
+	strata reason / diff=all; *test = peto (weighted test) output = wilcox/logrank (weighted/unweighted);
+run;
+
+/* plot hazard function. recode the data for the calculations to be correct for censored observations */
+data katrina2;
+	set survival.katrina;
+	if survive = 1 then hour=49;
+run;
+proc lifetest data=katrina2 method=life plots=h(cl) width=1;
+	time hour*survive(1);
+	strata reason;
+run;
