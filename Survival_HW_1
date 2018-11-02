@@ -9,7 +9,7 @@
    we can use proc lifetest */
 proc lifetest data=katrina;
 	/* time is whatever your time/tenure variable is */
-	time hour*survive(0);
+	time hour*survive(1);
 run;
 
 /* now with recidivism data */
@@ -24,13 +24,13 @@ proc lifetest data=katrina plots=s(cl cb=ep);
 		inside parenthesis is whichever value 
 		of your status variable corresponds to a CENSORED observation 
 		(contrast to R where you specify the value corresponding to the event */
-	time hour*survive(0);
+	time hour*survive(1);
 run;
 
 /* comparing curves using log-rank test */
 /* remember: null hypothesis is that all curves are equal */
 proc lifetest data=katrina plots=s(cl) notable;
-	time hour*survive(0);
+	time hour*survive(1);
 	/* strata statement is whatever variable you want to
 		produce separate curves for. here, we'll
 		compare those who had prior work experience
@@ -43,12 +43,12 @@ run;
 /* to compute this, we'll use the life-table/actuarial method */
 /* specify method=life */
 proc lifetest data=katrina method=life;
-	time hour*survive(0);
+	time hour*survive(1);
 run;
 /* I don't know what the default grouping is (maybe 10?),
 but you can set it yourself with the "width" or "ninterval" options */
 proc lifetest data=katrina method=life width=4;
-	time hour*survive(0);
+	time hour*survive(1);
 run;
 
 /* plot hazard function */
@@ -64,7 +64,7 @@ data recid2;
 	if survive=0 then hour=53;
 run;
 proc lifetest data=recid2 method=life plots=h(cl) width=1;
-	time hour*survive(0);
+	time hour*survive(1);
 	*strata reason;
 run;
 
@@ -72,5 +72,5 @@ run;
 /* adding the "nelson" option will add the cumulative hazard estimates to the table,
 but there aren't any plotting options for it in proc lifetest */
 proc lifetest data=katrina nelson;
-	time hour*survive(0);
+	time hour*survive(1);
 run;
