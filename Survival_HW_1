@@ -61,7 +61,7 @@ instead of the full closed interval [51,52] */
 data recid2;
 	set katrina;
 	/* if censored, make week=53 instead of 52 */
-	if survive=0 then hour=53;
+	if survive=1 then hour=53;
 run;
 proc lifetest data=recid2 method=life plots=h(cl) width=1;
 	time hour*survive(1);
