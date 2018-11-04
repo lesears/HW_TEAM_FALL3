@@ -1,0 +1,52 @@
+##################
+#   Sim & Risk   #
+#      HW1       #
+#  Orange Team 6 #
+##################
+
+# Load Packages
+library(readxl)
+library(ks)
+
+# Read Excel data
+drilling_costs <- read_excel("C:\\Users\\escha\\OneDrive\\Documents\\MSA\\Fall Classes\\Simulation & Risk\\Data\\Analysis_Data.xlsx",range = "'Drilling Cost'!A4:G51", col_names = FALSE)
+price_projections <- read_excel("C:\\Users\\escha\\OneDrive\\Documents\\MSA\\Fall Classes\\Simulation & Risk\\Data\\Analysis_Data.xlsx",range = "'Price Projections'!A4:D35", col_names = FALSE)
+
+colnames(drilling_costs) <- c("Date","Cost_Crude","Cost_NG","Cost_Dry","AR_Crude","AR_NG","AR_Dry")
+colnames(price_projections) <- c("Year","High_oil_price","Low_oil_price","AEO_Ref")
+
+# Formatting columns
+drilling_costs$AR_Crude <- as.double(drilling_costs$AR_Crude)
+drilling_costs$AR_NG <- as.double(drilling_costs$AR_NG)
+drilling_costs$AR_Dry <- as.double(drilling_costs$AR_Dry)
+drilling_costs$Date <- as.Date(drilling_costs$Date,'%Y/%m/%d')
+
+# Subset to relevant dates
+drilling_costs <- subset(drilling_costs, drilling_costs$Date > '1989-12-31')
+drilling_costs <- subset(drilling_costs, drilling_costs$Date < '2007-01-01')
+
+# Averaging Arithmetic Returns
+#drilling_costs$Avg_AR <- rowMeans(drilling_costs[,c("AR_Crude","AR_NG","AR_Dry")])
+
+# Vectorizing 48 arithmetic returns
+drill_vec <- c(drilling_costs$AR_Crude[-1],drilling_costs$AR_NG[-1],drilling_costs$AR_Dry[-1])
+
+mean(drill_vec)
+sd(drill_vec)
+
+# QQ-Plot to verify normality
+qqnorm(drill_vec, pch = 1, frame = FALSE)
+qqline(drill_vec, col = "steelblue", lwd = 2)
+
+# Shapiro-Wilk's test to verify normality (p-value > 0.05 says data are not statistically significant from a normal dist)
+shapiro.test(drill_vec)
+
+# Kernel Estimation
+set.seed(123)
+r <- rnorm(n=10000, mean=mean(drill_vec), sd=sd(drill_vec))
+
+Density.r <- density(r, bw="SJ-ste")
+Density.r
+
+Est.r <- rkde(fhat=kde(r, h=Density.r$bw), n=1000)
+hist(Est.r, breaks=50, main='Estimated Distribution', xlab='Arithmetic Returns')
