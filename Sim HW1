@@ -42,30 +42,34 @@ qqline(drill_vec, col = "steelblue", lwd = 2)
 # Shapiro-Wilk's test to verify normality (p-value > 0.05 says data are not statistically significant from a normal dist)
 shapiro.test(drill_vec)
 
-# Normal Distribution
+# Normal Distribution 2006-2012
 set.seed(123)
 r <- rnorm(n=10000, mean=mean(drill_vec), sd=sd(drill_vec))
 
 # Kernel Density Estimation
-Density.r <- density(r, bw="SJ-ste")
-Density.r
+#Density.r <- density(r, bw="SJ-ste")
+#Density.r
 
-Est.r <- rkde(fhat=kde(r, h=Density.r$bw), n=1000)
-hist(Est.r, breaks=50, main='Estimated Distribution', xlab='Arithmetic Returns')
+#Est.r <- rkde(fhat=kde(r, h=Density.r$bw), n=1000)
+#hist(Est.r, breaks=50, main='Estimated Distribution', xlab='Arithmetic Returns')
 
 # Triangle Distribution 2012-2015
 T1 <- rtri(10000, min = -0.22, max = -0.07, mode = -0.0917)
+hist(T1)
 
 # Triangle Distribution 2015-2018
 T2 <- rtri(10000, min = 0.02, max = 0.06, mode = 0.05)
+hist(T2)
 
 # Starting Costs
 Crude0 <- drilling_costs$Cost_Crude[17]
 NG0 <- drilling_costs$Cost_NG[17]
 Dry0 <- drilling_costs$Cost_Dry[17]
 
-# Crude Oil Costs through 2012
+#### Crude Oil Costs through 2012 ####
+# Set vector to 0s before adding output distribution
 Crude2012 <- rep(0,10000)
+# Outer loop - 10000 iterations from the Normal distribution, Inner loop - applying year over year calculations for each of the 10000 iterations.
 for(i in 1:10000){
   Crude0 <- drilling_costs$Cost_Crude[17]
   r <- rnorm(n=1, mean=mean(drill_vec), sd=sd(drill_vec))
@@ -79,10 +83,12 @@ for(i in 1:10000){
   Crude2012[i] <- Crudet
 }
 
+# Set reference line for next time span
 Crude_ref1 <- mean(Crude2012)
 mean(Crude2012)
 sd(Crude2012)
 
+# Distribution of the outcomes for 2012 Crude Oil costs
 hist(Crude2012, breaks=50, main='2012 Crude Drilling Cost', xlab='Final Value')
 abline(v = Crude0, col="red", lwd=2)
 mtext("2006 Cost", at=Crude0, col="red")
@@ -283,3 +289,5 @@ mtext("2006 Cost", at=NG0, col="red")
 hist(Dry2019, breaks=50, main='Dry Drilling Cost Prediction', xlab='Final Value')
 abline(v = Dry0, col="red", lwd=2)
 mtext("2006 Cost", at=Dry0, col="red")
+
+par(mfrow=c(1,1))
