@@ -106,7 +106,7 @@ clusters.si <- hclust(dist(toC), method="single")
 clusters.s <- hclust(dist(toC), method="average")
 
 plot(clusters.s)
-combined$clus <- cutree(clusters.s,7) #it looks like 6 clusters is reasonable
+combined$clus <- cutree(clusters.s,3) #it looks like 6 clusters is reasonable
 
 library(ggmap)
 clu1 <- combined %>% filter(clus == 1)
@@ -125,12 +125,37 @@ ggmap(map, fullpage = TRUE) +
   geom_point(data = clu1, aes(x = longitude, y = latitude), color = 'red', size = 2)
 
 ggmap(map2, fullpage = TRUE) +
+  geom_point(data = clu1, aes(x = longitude, y = latitude), color = 'red', size = 2)+
   geom_point(data = clu2, aes(x = longitude, y = latitude), color = 'blue', size = 2)+
-  geom_point(data = clu3, aes(x = longitude, y = latitude), color = 'green', size = 2)+
-  geom_point(data = clu4, aes(x = longitude, y = latitude), color = 'pink', size = 2)+
-  geom_point(data = clu5, aes(x = longitude, y = latitude), color = 'purple', size = 2)+
-  geom_point(data = clu6, aes(x = longitude, y = latitude), color = 'black', size = 2)+
-  geom_point(data = clu7, aes(x = longitude, y = latitude), color = 'white', size = 2)
+  geom_point(data = clu3, aes(x = longitude, y = latitude), color = 'green', size = 2)
+  
+  #score
+hist(clu1$avg)
+hist(clu2$avg)
+hist(clu3$avg)
+  
+
+#beds
+  hist(clu1$beds)
+  hist(clu2$beds)
+  hist(clu3$beds)
+  
+  #price
+  clu1$price = as.numeric(clu1$price)
+  hist(clu1$price)
+  clu2$price = as.numeric(clu2$price)
+  hist(clu2$price)
+  clu3$price = as.numeric(clu3$price)
+  hist(clu3$price)
+  
+  
+  
+  
+  
+  #geom_point(data = clu4, aes(x = longitude, y = latitude), color = 'pink', size = 2)+
+  #geom_point(data = clu5, aes(x = longitude, y = latitude), color = 'purple', size = 2)+
+  #geom_point(data = clu6, aes(x = longitude, y = latitude), color = 'black', size = 2)+
+  #geom_point(data = clu7, aes(x = longitude, y = latitude), color = 'white', size = 2)
 
 ###############################
 # describe them
@@ -150,15 +175,15 @@ words2 <- as.data.frame(new_reviews) %>% right_join(clu2,'listing_id')  %>%
 words3 <- as.data.frame(new_reviews) %>% right_join(clu3,'listing_id')  %>%
   select(word) %>% count(word,sort=TRUE) %>% filter(n < 150)
 
-words4 <- as.data.frame(new_reviews) %>% right_join(clu4,'listing_id')  %>%
+#words4 <- as.data.frame(new_reviews) %>% right_join(clu4,'listing_id')  %>%
   select(word) %>% count(word,sort=TRUE) %>% filter(n < 150)
 
-words5 <- as.data.frame(new_reviews) %>% right_join(clu5,'listing_id')  %>%
+#words5 <- as.data.frame(new_reviews) %>% right_join(clu5,'listing_id')  %>%
   select(word) %>% count(word,sort=TRUE) %>% filter(n < 150)
 
-words6 <- as.data.frame(new_reviews) %>% right_join(clu6,'listing_id')  %>%
+#words6 <- as.data.frame(new_reviews) %>% right_join(clu6,'listing_id')  %>%
   select(word) %>% count(word,sort=TRUE) %>% filter(n < 150)
-words7 <- as.data.frame(new_reviews) %>% right_join(clu7,'listing_id')  %>%
+#words7 <- as.data.frame(new_reviews) %>% right_join(clu7,'listing_id')  %>%
   select(word) %>% count(word,sort=TRUE) %>% filter(n < 150)
 
 
