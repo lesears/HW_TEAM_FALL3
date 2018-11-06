@@ -22,14 +22,14 @@ drilling_costs$AR_NG <- as.double(drilling_costs$AR_NG)
 drilling_costs$AR_Dry <- as.double(drilling_costs$AR_Dry)
 drilling_costs$Date <- as.Date(drilling_costs$Date,'%Y/%m/%d')
 
-# Subset to relevant dates
+# Subset to relevant dates (1990-2006)
 drilling_costs <- subset(drilling_costs, drilling_costs$Date > '1989-12-31')
 drilling_costs <- subset(drilling_costs, drilling_costs$Date < '2007-01-01')
 
-# Averaging Arithmetic Returns
-#drilling_costs$Avg_AR <- rowMeans(drilling_costs[,c("AR_Crude","AR_NG","AR_Dry")])
+# Averaging 2006 drilling costs
+Start_drilling_cost <- (drilling_costs$Cost_Crude[17]+drilling_costs$Cost_NG[17]+drilling_costs$Cost_Dry[17])/3
 
-# Vectorizing 48 arithmetic returns
+# Vectorizing 48 arithmetic returns (1991-2006)
 drill_vec <- c(drilling_costs$AR_Crude[-1],drilling_costs$AR_NG[-1],drilling_costs$AR_Dry[-1])
 
 mean(drill_vec)
@@ -42,252 +42,78 @@ qqline(drill_vec, col = "steelblue", lwd = 2)
 # Shapiro-Wilk's test to verify normality (p-value > 0.05 says data are not statistically significant from a normal dist)
 shapiro.test(drill_vec)
 
-# Normal Distribution 2006-2012
+########## Normal Distribution ##########
+
+# Set null vector for drilling costs
+Drill2019 <- rep(0,10000)
+
+# Run 10000 iterations of our distributions
+for(i in 1:10000){
+  r <- rnorm(n=1, mean=mean(drill_vec), sd=sd(drill_vec))
+  # Calculate 2007 cost and set to Drillt
+  Drillt <- Start_drilling_cost*(1 + r)
+  # Cost changes from 2007-2012
+  for(j in 1:5){
+    r <- rnorm(n=1, mean=mean(drill_vec), sd=sd(drill_vec))
+    Drillt <- Drillt*(1+r)
+  }
+  # Cost changes from 2013-2015
+  for(k in 1:3){
+    r <- rtri(1, min = -0.22, max = -0.07, mode = -0.0917)
+    Drillt <- Drillt*(1+r)
+  }
+  # Cost changes from 2016-2019
+  for(l in 1:4){
+    r <- rtri(1, min = 0.02, max = 0.06, mode = 0.05)
+    Drillt <- Drillt*(1+r)
+  }
+  # Record final result for each of the 10000 iterations
+  Drill2019[i] <- Drillt
+}
+
+# Distribution of predicted 2019 drilling costs
+hist(Drill2019, breaks=50, main='Drilling Cost Prediction', xlab='Final Value')
+abline(v = Start_drilling_cost, col="red", lwd=2)
+mtext("2006 Cost", at=Start_drilling_cost, col="red")
+
+mean(Drill2019)
+
+
+########## Kernel Density Estimation ##########
+
 set.seed(123)
 r <- rnorm(n=10000, mean=mean(drill_vec), sd=sd(drill_vec))
 
-# Kernel Density Estimation
-#Density.r <- density(r, bw="SJ-ste")
-#Density.r
+Density.r <- density(r, bw="SJ-ste")
+Density.r
 
-#Est.r <- rkde(fhat=kde(r, h=Density.r$bw), n=1000)
-#hist(Est.r, breaks=50, main='Estimated Distribution', xlab='Arithmetic Returns')
+Est.r <- rkde(fhat=kde(r, h=Density.r$bw), n=1000)
+hist(Est.r, breaks=50, main='Estimated Distribution', xlab='Arithmetic Returns')
 
-# Triangle Distribution 2012-2015
-T1 <- rtri(10000, min = -0.22, max = -0.07, mode = -0.0917)
-hist(T1)
-
-# Triangle Distribution 2015-2018
-T2 <- rtri(10000, min = 0.02, max = 0.06, mode = 0.05)
-hist(T2)
-
-# Starting Costs
-Crude0 <- drilling_costs$Cost_Crude[17]
-NG0 <- drilling_costs$Cost_NG[17]
-Dry0 <- drilling_costs$Cost_Dry[17]
-
-#### Crude Oil Costs through 2012 ####
-# Set vector to 0s before adding output distribution
-Crude2012 <- rep(0,10000)
-# Outer loop - 10000 iterations from the Normal distribution, Inner loop - applying year over year calculations for each of the 10000 iterations.
+Drill2019 <- rep(0,10000)
 for(i in 1:10000){
-  Crude0 <- drilling_costs$Cost_Crude[17]
-  r <- rnorm(n=1, mean=mean(drill_vec), sd=sd(drill_vec))
+  r <- rkde(fhat=kde(r, h=Density.r$bw), n=1)
   
-  Crudet <- Crude0*(1 + r)
+  Drillt <- Start_drilling_cost*(1 + r)
   
-  for(j in 1:6){
-    r <- rnorm(n=1, mean=mean(drill_vec), sd=sd(drill_vec))
-    Crudet <- Crudet*(1+r)
+  for(j in 1:5){
+    r <- rkde(fhat=kde(r, h=Density.r$bw), n=1)
+    Drillt <- Drillt*(1+r)
   }
-  Crude2012[i] <- Crudet
-}
-
-# Set reference line for next time span
-Crude_ref1 <- mean(Crude2012)
-mean(Crude2012)
-sd(Crude2012)
-
-# Distribution of the outcomes for 2012 Crude Oil costs
-hist(Crude2012, breaks=50, main='2012 Crude Drilling Cost', xlab='Final Value')
-abline(v = Crude0, col="red", lwd=2)
-mtext("2006 Cost", at=Crude0, col="red")
-
-# Natural Gas Costs through 2012
-NG2012 <- rep(0,10000)
-for(i in 1:10000){
-  NG0 <- drilling_costs$Cost_NG[17]
-  r <- rnorm(n=1, mean=mean(drill_vec), sd=sd(drill_vec))
-  
-  NGt <- NG0*(1 + r)
-  
-  for(j in 1:6){
-    r <- rnorm(n=1, mean=mean(drill_vec), sd=sd(drill_vec))
-    NGt <- NGt*(1+r)
-  }
-  NG2012[i] <- NGt
-}
-
-NG_ref1 <- mean(NG2012)
-mean(NG2012)
-sd(NG2012)
-
-hist(NG2012, breaks=50, main='2012 Natural Gas Drilling Cost', xlab='Final Value')
-abline(v = NG0, col="red", lwd=2)
-mtext("2006 Cost", at=NG0, col="red")
-
-
-# Dry Costs through 2012
-Dry2012 <- rep(0,10000)
-for(i in 1:10000){
-  Dry0 <- drilling_costs$Cost_Dry[17]
-  r <- rnorm(n=1, mean=mean(drill_vec), sd=sd(drill_vec))
-  
-  Dryt <- Dry0*(1 + r)
-  
-  for(j in 1:6){
-    r <- rnorm(n=1, mean=mean(drill_vec), sd=sd(drill_vec))
-    Dryt <- Dryt*(1+r)
-  }
-  Dry2012[i] <- Dryt
-}
-
-Dry_ref1 <- mean(Dry2012)
-mean(Dry2012)
-sd(Dry2012)
-
-hist(Dry2012, breaks=50, main='2012 Dry Drilling Cost', xlab='Final Value')
-abline(v = Dry0, col="red", lwd=2)
-mtext("2006 Cost", at=Dry0, col="red")
-
-# Crude Oil Costs through 2015
-Crude2015 <- rep(0,10000)
-for(i in 1:10000){
-  Crude0 <- Crude2012[i]
-  r <- rtri(1, min = -0.22, max = -0.07, mode = -0.0917)
-  
-  Crudet <- Crude0*(1 + r)
-  
-  for(j in 1:3){
+  for(k in 1:3){
     r <- rtri(1, min = -0.22, max = -0.07, mode = -0.0917)
-    Crudet <- Crudet*(1+r)
+    Drillt <- Drillt*(1+r)
   }
-  Crude2015[i] <- Crudet
-}
-
-Crude_ref2 <- mean(Crude2015)
-mean(Crude2015)
-sd(Crude2015)
-
-hist(Crude2015, breaks=50, main='2015 Crude Drilling Cost', xlab='Final Value')
-abline(v = Crude_ref1, col="red", lwd=2)
-mtext("2012 Avg Cost", at=Crude_ref1, col="red")
-
-# Natural Gas Costs through 2015
-NG2015 <- rep(0,10000)
-for(i in 1:10000){
-  NG0 <- NG2012[i]
-  r <- rtri(1, min = -0.22, max = -0.07, mode = -0.0917)
-  
-  NGt <- NG0*(1 + r)
-  
-  for(j in 1:3){
-    r <- rtri(1, min = -0.22, max = -0.07, mode = -0.0917)
-    NGt <- NGt*(1+r)
-  }
-  NG2015[i] <- NGt
-}
-
-NG_ref2 <- mean(NG2015)
-mean(NG2015)
-sd(NG2015)
-
-hist(NG2015, breaks=50, main='2015 Natural Gas Drilling Cost', xlab='Final Value')
-abline(v = NG_ref1, col="red", lwd=2)
-mtext("2012 Avg Cost", at=NG_ref1, col="red")
-
-# Dry Costs through 2015
-Dry2015 <- rep(0,10000)
-for(i in 1:10000){
-  Dry0 <- Dry2012[i]
-  r <- rtri(1, min = -0.22, max = -0.07, mode = -0.0917)
-  
-  Dryt <- Dry0*(1 + r)
-  
-  for(j in 1:3){
-    r <- rtri(1, min = -0.22, max = -0.07, mode = -0.0917)
-    Dryt <- Dryt*(1+r)
-  }
-  Dry2015[i] <- Dryt
-}
-
-Dry_ref2 <- mean(Dry2015)
-mean(Dry2015)
-sd(Dry2015)
-
-hist(Dry2015, breaks=50, main='2015 Dry Drilling Cost', xlab='Final Value')
-abline(v = Dry_ref1, col="red", lwd=2)
-mtext("2012 Avg Cost", at=Dry_ref1, col="red")
-
-# Crude Oil Costs through 2019
-Crude2019 <- rep(0,10000)
-for(i in 1:10000){
-  Crude0 <- Crude2015[i]
-  r <- rtri(1, min = 0.02, max = 0.06, mode = 0.05)
-  
-  Crudet <- Crude0*(1 + r)
-  
-  for(j in 1:4){
+  for(l in 1:4){
     r <- rtri(1, min = 0.02, max = 0.06, mode = 0.05)
-    Crudet <- Crudet*(1+r)
+    Drillt <- Drillt*(1+r)
   }
-  Crude2019[i] <- Crudet
+  Drill2019[i] <- Drillt
 }
 
-mean(Crude2019)
-sd(Crude2019)
 
-hist(Crude2019, breaks=50, main='2019 Crude Drilling Cost', xlab='Final Value')
-abline(v = Crude_ref2, col="red", lwd=2)
-mtext("2015 Avg Cost", at=Crude_ref2, col="red")
+hist(Drill2019, breaks=50, main='Drilling Cost Prediction', xlab='Final Value')
+abline(v = Start_drilling_cost, col="red", lwd=2)
+mtext("2006 Cost", at=Start_drilling_cost, col="red")
 
-# Natural Gas Costs through 2019
-NG2019 <- rep(0,10000)
-for(i in 1:10000){
-  NG0 <- NG2015[i]
-  r <- rtri(1, min = 0.02, max = 0.06, mode = 0.05)
-  
-  NGt <- NG0*(1 + r)
-  
-  for(j in 1:4){
-    r <- rtri(1, min = 0.02, max = 0.06, mode = 0.05)
-    NGt <- NGt*(1+r)
-  }
-  NG2019[i] <- NGt
-}
-
-mean(NG2019)
-sd(NG2019)
-
-hist(NG2019, breaks=50, main='2019 Natural Gas Drilling Cost', xlab='Final Value')
-abline(v = NG_ref2, col="red", lwd=2)
-mtext("2015 Avg Cost", at=NG_ref2, col="red")
-
-# Dry Costs through 2019
-Dry2019 <- rep(0,10000)
-for(i in 1:10000){
-  Dry0 <- Dry2015[i]
-  r <- rtri(1, min = 0.02, max = 0.06, mode = 0.05)
-  
-  Dryt <- Dry0*(1 + r)
-  
-  for(j in 1:4){
-    r <- rtri(1, min = 0.02, max = 0.06, mode = 0.05)
-    Dryt <- Dryt*(1+r)
-  }
-  Dry2019[i] <- Dryt
-}
-
-mean(Dry2019)
-sd(Dry2019)
-
-hist(Dry2019, breaks=50, main='2019 Dry Drilling Cost', xlab='Final Value')
-abline(v = Dry_ref2, col="red", lwd=2)
-mtext("2015 Avg Cost", at=Dry_ref2, col="red")
-
-# Cost Projections for all 3 drilling types
-par(mfrow=c(1,3))
-
-hist(Crude2019, breaks=50, main='Crude Drilling Cost Prediction', xlab='Final Value')
-abline(v = Crude0, col="red", lwd=2)
-mtext("2006 Cost", at=Crude0, col="red")
-
-hist(NG2019, breaks=50, main='Natural Gas Drilling Cost Prediction', xlab='Final Value')
-abline(v = NG0, col="red", lwd=2)
-mtext("2006 Cost", at=NG0, col="red")
-
-hist(Dry2019, breaks=50, main='Dry Drilling Cost Prediction', xlab='Final Value')
-abline(v = Dry0, col="red", lwd=2)
-mtext("2006 Cost", at=Dry0, col="red")
-
-par(mfrow=c(1,1))
+mean(Drill2019)
