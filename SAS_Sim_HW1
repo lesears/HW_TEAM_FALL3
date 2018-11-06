@@ -1,0 +1,169 @@
+/* IMPORTING
+
+proc import datafile = 'C:\Users\turne\OneDrive\Documents\Fall 3\Simulation and Risk\HW1\analysis_data.xlsx'
+	dbms = xlsx out = sim.data replace;
+	sheet = 'Drilling Cost';
+	getnames = yes;
+	datarow = 4;
+run;
+
+data sim.price_proj;
+	set sim.data2 (RENAME = (Price_projections=year b=high c=low d=ref));
+	label year = 'year'
+		high = 'high'
+		low = 'low'
+		ref = 'ref';
+run;
+
+data sim.drill_cost;
+	set sim.data (rename = (drilling_costs=date b=oil_cost c=gas_cost d=dry_cost e=oil_return f=gas_return g=dry_return));
+	label date='date'
+		oil_cost='oil_cost'
+		gas_cost='gas_cost'
+		dry_cost='dry_cost'
+		oil_return='oil_return'
+		gas_return='gas_return'
+		dry_return='dry_return';
+run; 
+
+*/
+
+/* SUBSET DATES
+
+data sim.drill_cost2;
+	set sim.drill_cost;
+	format date mmddyy10.;
+run;
+proc sql;
+	create table sim.cost_subset as
+	select *
+	from sim.drill_cost2
+	where date between "30jun1991"d and "30jun2006"d;
+quit;
+
+*/
+
+/*  CREATING LIST OF 48 RETURNS
+
+*calculating average cost;
+proc sql;
+	create table oil as
+	select oil_return as a
+	from sim.cost_subset;
+quit;
+proc sql;
+	create table gas as
+	select gas_return as a
+	from sim.cost_subset;
+quit;
+proc sql;
+	create table dry as
+	select dry_return as a
+	from sim.cost_subset;
+quit;
+
+proc append base = all data = oil;
+run;
+proc append base = all data = gas;
+run;
+proc append base = all data = dry;
+run;
+
+data sim.all2;
+	set sim.all (rename = (a = return));
+	return2 = input(return, 15.);
+	drop return;
+run;
+data sim.all3;
+ 	set sim.all2;
+	if return2 > 1 or return2 < -1 then return2 = return2/100;
+		else return2 = return2;
+	drop return;
+run;
+*/
+proc univariate data = sim.all3;
+	qqplot return2;
+run;
+
+/* Distribution Selection - Kernel Estimation */
+proc kde data=sim.all3;
+	univar return2 / unistats;
+run;
+
+/* creating smoothed bootstrap */
+proc iml;
+	*create a function x-data, B- number of samples for each of the little dist;
+	start smoothstrap(x, B, Bandwidth);
+		N = 1;
+		s = Sample(x, N // B);
+		eps = j(B, N); *creates a B by N matrix, B- number of obs for each data point;
+		call randgen(eps, "Normal", 0, Bandwidth);
+		return( s + eps );
+	finish;
+	
+	use sim.all3;
+	read all var {return2} into x;
+	close sim.all3;
+
+	call randseed(12345);
+	return = smoothstrap(x, 100000, 0.083);
+	est_return = return`;
+	create Smooth var {"Est_return"};
+	append;
+	close Smooth;
+quit;
+proc univariate data=Smooth;
+	var Est_return;
+	histogram Est_return / normal kernel;
+run;
+quit;
+
+/* calculating avg cost to use in loop */
+proc sql;
+create table avg_cost as
+select date, mean(oil_cost, gas_cost, dry_cost) as avg_cost from sim.cost_subset;
+quit;
+
+/* simulation */
+data simulation;
+	do i = 1 to 10000;
+		P0 = 2279.8; *average cost of well in 2006;
+		r = RAND('Normal', 0.129962, 0.195323); *expected mean/sd from proc iml above;
+		Pt = P0*(1 + r);
+
+		/* 2006 to 2012*/
+		do h = 1 to 5;
+			r = RAND('NORMAL', 0.129962, 0.195323);
+			Pt = Pt*(1 + r);
+		end;
+		
+		/* 2012 to 2015 */
+		do j = 1 to 3;
+			r = 7 +(15*RAND('Triangle', 0.14467));
+			Pt = Pt*(1 - r/100);
+		end;
+		
+		/* 2015 to 2018*/
+		do k = 1 to 3;
+			r = 2 +(4*RAND('Triangle',0.75));
+			Pt = Pt*(1 + r/100);
+		end;
+		output;
+	end;
+run;
+
+proc means data = simulation;
+	var Pt;
+run; 
+
+proc sgplot data = simulation;
+	histogram Pt;
+	refline 2279.8 / axis=x label='2006 Well Cost' lineattrs=(color=red thickness=2);
+	keylegend / location=inside position=topright;
+run;
+
+proc univariate data = simulation;
+	var Pt;
+	histogram Pt / normal kernel;
+run;
+quit;
