@@ -102,11 +102,11 @@ toC3 = cbind(b$avg, b$std.lat, b$std.lon)
 toC4 = cbind(c$avg, c$std.lat, c$std.lon)
 
 clusters.c <- hclust(dist(toC),method="complete")
-clusters.s <- hclust(dist(toC), method="single")
+clusters.si <- hclust(dist(toC), method="single")
 clusters.s <- hclust(dist(toC), method="average")
 
-plot(clusters.c)
-combined$clus <- cutree(clusters.c,5) #it looks like 6 clusters is reasonable
+plot(clusters.s)
+combined$clus <- cutree(clusters.s,7) #it looks like 6 clusters is reasonable
 
 library(ggmap)
 clu1 <- combined %>% filter(clus == 1)
@@ -115,6 +115,7 @@ clu3 <- combined %>% filter(clus == 3)
 clu4 <- combined %>% filter(clus == 4)
 clu5 <- combined %>% filter(clus == 5)
 clu6 <- combined %>% filter(clus == 6)
+clu7 <- combined %>% filter(clus == 7)
 
 #I want to find the Geo-location of these listings :-)
 
@@ -124,8 +125,12 @@ ggmap(map, fullpage = TRUE) +
   geom_point(data = clu1, aes(x = longitude, y = latitude), color = 'red', size = 2)
 
 ggmap(map2, fullpage = TRUE) +
-  geom_point(data = clu2, aes(x = longitude, y = latitude), color = 'red', size = 2)
-
+  geom_point(data = clu2, aes(x = longitude, y = latitude), color = 'blue', size = 2)+
+  geom_point(data = clu3, aes(x = longitude, y = latitude), color = 'green', size = 2)+
+  geom_point(data = clu4, aes(x = longitude, y = latitude), color = 'pink', size = 2)+
+  geom_point(data = clu5, aes(x = longitude, y = latitude), color = 'purple', size = 2)+
+  geom_point(data = clu6, aes(x = longitude, y = latitude), color = 'black', size = 2)+
+  geom_point(data = clu7, aes(x = longitude, y = latitude), color = 'white', size = 2)
 
 ###############################
 # describe them
@@ -151,6 +156,11 @@ words4 <- as.data.frame(new_reviews) %>% right_join(clu4,'listing_id')  %>%
 words5 <- as.data.frame(new_reviews) %>% right_join(clu5,'listing_id')  %>%
   select(word) %>% count(word,sort=TRUE) %>% filter(n < 150)
 
+words6 <- as.data.frame(new_reviews) %>% right_join(clu6,'listing_id')  %>%
+  select(word) %>% count(word,sort=TRUE) %>% filter(n < 150)
+words7 <- as.data.frame(new_reviews) %>% right_join(clu7,'listing_id')  %>%
+  select(word) %>% count(word,sort=TRUE) %>% filter(n < 150)
+
 
 
 #random is not so random
@@ -174,5 +184,13 @@ wordcloud(words = words4$word, freq = words5$n, min.freq = 150,
           colors=brewer.pal(8, "Dark2"))
 set.seed(555)
 wordcloud(words = words5$word, freq = words5$n, min.freq = 150,
+          max.words=100, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+set.seed(555)
+wordcloud(words = words6$word, freq = words5$n, min.freq = 150,
+          max.words=100, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+set.seed(555)
+wordcloud(words = words7$word, freq = words5$n, min.freq = 150,
           max.words=100, random.order=FALSE, rot.per=0.35, 
           colors=brewer.pal(8, "Dark2"))
