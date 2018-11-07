@@ -43,6 +43,7 @@ qqline(drill_vec, col = "steelblue", lwd = 2)
 shapiro.test(drill_vec)
 
 ########## Normal Distribution ##########
+set.seed(1928)
 
 # Set null vector for drilling costs
 Drill2019 <- rep(0,10000)
@@ -76,12 +77,21 @@ hist(Drill2019, breaks=50, main='Drilling Cost Prediction', xlab='Final Value')
 abline(v = Start_drilling_cost, col="red", lwd=2)
 mtext("2006 Cost", at=Start_drilling_cost, col="red")
 
-mean(Drill2019)
+# CV
+sd(Drill2019)/mean(Drill2019)
 
+# Quantile distribution
+quantile(Drill2019, probs = c(0.05,0.25,0.5,0.75,0.95))
+
+# Percentage within $1000000 each direction of the median
+ecdf(Drill2019)(4557.053) - ecdf(Drill2019)(2557.053)
+
+# Suggested cost estimate
+quantile(Drill2019, probs = 0.85)
 
 ########## Kernel Density Estimation ##########
 
-set.seed(123)
+set.seed(1928)
 r <- rnorm(n=10000, mean=mean(drill_vec), sd=sd(drill_vec))
 
 Density.r <- density(r, bw="SJ-ste")
