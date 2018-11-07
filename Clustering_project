@@ -98,7 +98,9 @@ hist(b$price, breaks=10)
 toC<- cbind(combined$avg,combined$std.lat,combined$std.lon)
 toC2 = cbind(a$avg, a$std.lat, a$std.lon)
 clusters.s2 <- hclust(dist(toC2), method="average")
+
 toC3 = cbind(b$avg, b$std.lat, b$std.lon)
+clusters.s3 <- hclust(dist(toC2), method="average")
 toC4 = cbind(c$avg, c$std.lat, c$std.lon)
 
 clusters.c <- hclust(dist(toC),method="complete")
@@ -122,8 +124,9 @@ clu7 <- combined %>% filter(clus == 7)
 
 #notice U of Washington Right in the middle
 ggmap(map, fullpage = TRUE) +
-  geom_point(data = clu1, aes(x = longitude, y = latitude), color = 'red', size = 2)
-
+  geom_point(data = a, aes(x = longitude, y = latitude), color = 'red', size = 2)+
+  geom_point(data = b, aes(x = longitude, y = latitude), color = 'blue', size = 2)
+##postiive and negative sentiment are scattered equally across all areas
 ggmap(map2, fullpage = TRUE) +
   geom_point(data = clu1, aes(x = longitude, y = latitude), color = 'red', size = 2)+
   geom_point(data = clu2, aes(x = longitude, y = latitude), color = 'blue', size = 2)+
@@ -224,3 +227,5 @@ set.seed(555)
 wordcloud(words = words7$word, freq = words5$n, min.freq = 150,
           max.words=100, random.order=FALSE, rot.per=0.35, 
           colors=brewer.pal(8, "Dark2"))
+
+
