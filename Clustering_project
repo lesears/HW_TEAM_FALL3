@@ -137,16 +137,21 @@ hist(clu3$avg)
 
 #beds
   hist(clu1$beds)
+  #mean = 1.65
   hist(clu2$beds)
+  #mean = 1.64
   hist(clu3$beds)
-  
+  #mean = 1.33  
   #price
   clu1$price = as.numeric(clu1$price)
   hist(clu1$price)
+  #mean = 161.4
   clu2$price = as.numeric(clu2$price)
   hist(clu2$price)
+  #1177.73
   clu3$price = as.numeric(clu3$price)
   hist(clu3$price)
+  #242
   
   
   
