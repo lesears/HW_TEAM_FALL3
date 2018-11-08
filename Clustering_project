@@ -93,9 +93,9 @@ hist(a$price, breaks = 10)
 b$price = as.numeric(b$price)
 hist(b$price, breaks=10)
 
+toC<- cbind(combined$price,combined$std.lat,combined$std.lon)
 
-
-toC<- cbind(combined$avg,combined$std.lat,combined$std.lon)
+toC<- cbind(combined$price,combined$std.lat,combined$std.lon)
 toC2 = cbind(a$avg, a$std.lat, a$std.lon)
 clusters.s2 <- hclust(dist(toC2), method="average")
 
@@ -127,6 +127,9 @@ ggmap(map, fullpage = TRUE) +
   geom_point(data = a, aes(x = longitude, y = latitude), color = 'red', size = 2)+
   geom_point(data = b, aes(x = longitude, y = latitude), color = 'blue', size = 2)
 ##postiive and negative sentiment are scattered equally across all areas
+
+
+###clusters on map ####
 ggmap(map2, fullpage = TRUE) +
   geom_point(data = clu1, aes(x = longitude, y = latitude), color = 'red', size = 2)+
   geom_point(data = clu2, aes(x = longitude, y = latitude), color = 'blue', size = 2)+
@@ -151,7 +154,7 @@ hist(clu3$avg)
   #mean = 161.4
   clu2$price = as.numeric(clu2$price)
   hist(clu2$price)
-  #1177.73
+  #177.73
   clu3$price = as.numeric(clu3$price)
   hist(clu3$price)
   #242
@@ -174,14 +177,23 @@ hist(clu3$avg)
 # as.data.frame removes this distinction
 
 words1 <- as.data.frame(new_reviews) %>% right_join(clu1,'listing_id') %>%
-  select(word) %>% count(word,sort=TRUE) %>% filter(n < 150)
+  select(word) %>% anti_join(stop_words) %>% mutate(word = str_extract(word, "[a-z']+")) %>% 
+    mutate(word_stem = wordStem(word, language="english")) %>%
+    filter(word_stem != "NA") %>%
+    count(word_stem, sort = TRUE) %>% mutate(p = n/sum(n))%>% filter(n < 150)
 
 
-words2 <- as.data.frame(new_reviews) %>% right_join(clu2,'listing_id')  %>%
-  select(word) %>% count(word,sort=TRUE) %>% filter(n < 150)
+words2 <- as.data.frame(new_reviews) %>% right_join(clu2,'listing_id') %>%
+    select(word) %>% anti_join(stop_words) %>% mutate(word = str_extract(word, "[a-z']+")) %>% 
+    mutate(word_stem = wordStem(word, language="english")) %>%
+    filter(word_stem != "NA") %>%
+    count(word_stem, sort = TRUE) %>% mutate(p = n/sum(n))%>% filter(n < 150)
 
-words3 <- as.data.frame(new_reviews) %>% right_join(clu3,'listing_id')  %>%
-  select(word) %>% count(word,sort=TRUE) %>% filter(n < 150)
+words3 <- as.data.frame(new_reviews) %>% right_join(clu3,'listing_id') %>%
+  select(word) %>% anti_join(stop_words) %>% mutate(word = str_extract(word, "[a-z']+")) %>% 
+  mutate(word_stem = wordStem(word, language="english")) %>%
+  filter(word_stem != "NA") %>%
+  count(word_stem, sort = TRUE) %>% mutate(p = n/sum(n))%>% filter(n < 150)
 
 #words4 <- as.data.frame(new_reviews) %>% right_join(clu4,'listing_id')  %>%
   select(word) %>% count(word,sort=TRUE) %>% filter(n < 150)
@@ -199,16 +211,16 @@ words3 <- as.data.frame(new_reviews) %>% right_join(clu3,'listing_id')  %>%
 #random is not so random
 set.seed(555)
 
-wordcloud(words = words1$word, freq = words4$n, min.freq = 150,
+wordcloud(words = words1$word_stem, freq = words1$n, min.freq = 150,
           max.words=100, random.order=FALSE, rot.per=0.35, 
           colors=brewer.pal(8, "Dark2"))
 
 set.seed(555)
-wordcloud(words = words2$word, freq = words5$n, min.freq = 150,
+wordcloud(words = words2$word_stem, freq = words2$n, min.freq = 150,
           max.words=100, random.order=FALSE, rot.per=0.35, 
           colors=brewer.pal(8, "Dark2"))
 set.seed(555)
-wordcloud(words = words3$word, freq = words5$n, min.freq = 150,
+wordcloud(words = words3$word_stem, freq = words3$n, min.freq = 150,
           max.words=100, random.order=FALSE, rot.per=0.35, 
           colors=brewer.pal(8, "Dark2"))
 set.seed(555)
