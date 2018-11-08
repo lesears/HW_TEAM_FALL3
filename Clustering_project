@@ -81,7 +81,7 @@ colnames(listings)[colnames(listings) == 'id'] <- 'listing_id'
 combined <- complete %>% left_join(listings,"listing_id")
 combined$std.lat <- scale(combined$latitude)
 combined$std.lon <- scale(combined$longitude)
-
+write.csv(combined, 'combined.csv')
 a = combined[combined$avg>0,]
 b = combined[combined$avg<0,]
 c = combined[combined$avg==0,]
