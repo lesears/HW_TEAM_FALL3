@@ -72,11 +72,6 @@ for(i in 1:10000){
   Drill2019[i] <- Drillt
 }
 
-# Distribution of predicted 2019 drilling costs
-hist(Drill2019, breaks=50, main='Drilling Cost Prediction', xlab='Final Value')
-abline(v = Start_drilling_cost, col="red", lwd=2)
-mtext("2006 Cost", at=Start_drilling_cost, col="red")
-
 # CV
 sd(Drill2019)/mean(Drill2019)
 
@@ -89,6 +84,18 @@ ecdf(Drill2019)(4557.053) - ecdf(Drill2019)(2557.053)
 # Suggested cost estimate
 quantile(Drill2019, probs = 0.85)
 
+hist(Drill2019, breaks=50, main='Drilling Cost Prediction', xlab='Possible Values ($1000s)', col = "gray")
+abline(v = 5304, col="blue",lwd=2)
+mtext("$5,304,000", at=5304, col="blue")
+
+# Distribution of predicted 2019 drilling costs
+hist(Drill2019, breaks=50, main='Drilling Cost Prediction', xlab='Possible Values ($1000s)', col = "gray")
+abline(v = Start_drilling_cost, col="red", lwd=2)
+abline(v = 3557, col="blue",lwd=2)
+mtext("2006", at=Start_drilling_cost, col="red")
+mtext("Avg 2019", at=3557, col="blue")
+
+
 ########## Kernel Density Estimation ##########
 
 set.seed(1928)
@@ -99,6 +106,7 @@ Density.r
 
 Est.r <- rkde(fhat=kde(r, h=Density.r$bw), n=1000)
 hist(Est.r, breaks=50, main='Estimated Distribution', xlab='Arithmetic Returns')
+mean(Est.r)
 
 Drill2019 <- rep(0,10000)
 for(i in 1:10000){
