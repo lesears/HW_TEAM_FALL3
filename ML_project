@@ -14,9 +14,14 @@ TrainInd = sample(c(T,F),size=1030, replace=T,prob=c(0.8,0.2))
 train=train[TrainInd,]
 valid=train[!TrainInd,]
 
+####BASELINE####
+library(OneR)
+model = OneR(train, verbose = TRUE)
+prediction <- predict(model, train)
+eval_model(prediction, train)
 #######Random Forest###########3
 library('randomForest')
-rf = randomForest(target ~ ., data=train, ntree=23)
+rf = randomForest(target ~ ., data=train, mtry = 5, ntree=60)
 
 
 
@@ -30,7 +35,7 @@ rf = randomForest(target ~ ., data=train, ntree=23)
 #' performance on the test data. (Tuning the hyperparameter ntrees.)
 
 accuracy=vector()
-ntrees=seq(1,100,20)
+ntrees=seq(1,70,20)
 i=1
 for(n in ntrees){
   rf = randomForest(target ~ ., data=train, ntree=n, type='class')
@@ -58,10 +63,10 @@ plot(ntrees, accuracy)
 #' We could also play around with the other parameters, like mtry:
 
 accuracy=vector()
-mtry=seq(1,16)
+mtry=seq(1,5)
 i=1
 for(m in mtry){
-  rf = randomForest(target ~ ., data=train,mtry=m, ntree=50, type='class')
+  rf = randomForest(target ~ ., data=train,mtry=m, ntree=40, type='class')
   test_pred =  predict(rf,valid,type='class')
   accuracy[i] =  sum(test_pred!=valid$target)/nrow(valid)
   i=i+1
@@ -70,7 +75,7 @@ for(m in mtry){
 plot(mtry, accuracy)
 
 #' Can get some good information about variable importance using the importance=T option
-rf = randomForest(target ~ ., data=train,importance = T,ntree=50, type='class')
+rf = randomForest(target ~ ., data=train,importance = T,ntree=40)
 #' Tells us which variables are important in prediction of each digit
 importance(rf)
 
@@ -169,10 +174,10 @@ nnet1 = neuralnet(f, data=train_norm, hidden=1)
 #but also the computed value at each neuron (in the $neurons component). We’ll only want to retrieve the
 #former. We’ll use the predicted values to calculate a validation R
 # 2 as well as a MAPE.
-results1 = compute(nnet1, valid_norm[,1:8])
+results1 = compute(nnet1, valid_norm[1:85])
 nnet1Pred=results1$net.result
-nnet1Rsq = cor(nnet1Pred,valid_norm$strength)
-nnet1MAPE = mean((nnet1Pred-valid_norm$strength)/valid_norm$strength)
+nnet1Rsq = cor(nnet1Pred,valid_norm$target)
+nnet1MAPE = mean((nnet1Pred-valid_norm$target)/valid_norm$target)
 cat("1 Hidden Unit R-squared:", nnet1Rsq)
 cat("1 Hidden Unit MAPE:", nnet1MAPE)
 # trength. If those minimum strength observations
@@ -182,9 +187,9 @@ cat("1 Hidden Unit MAPE:", nnet1MAPE)
 
 #(which shouldn’t change since we’re only taking a linear
 #transformation of our predictions) and the MAPE for the neural network model.
-nnet1PredRescale = nnet1Pred*(max(concrete$strength)-min(concrete$strength))+min(concrete$strength)
-nnet1Rsq = cor(nnet1PredRescale,valid$strength)
-nnet1MAPE = mean((nnet1PredRescale-valid$strength)/valid$strength)
+nnet1PredRescale = nnet1Pred*(max(train$target)-min(train$target))+min(train$target)
+nnet1Rsq = cor(nnet1PredRescale,valid$target)
+nnet1MAPE = mean((nnet1PredRescale-valid$target)/valid$target)
 cat("1 Hidden Unit R-squared after Rescaling:", nnet1Rsq)
 
 cat("1 Hidden Unit MAPE after Rescaling:", nnet1MAPE)
@@ -192,20 +197,20 @@ cat("1 Hidden Unit MAPE after Rescaling:", nnet1MAPE)
 #Our MAPE is starting to look like something we might have more confidence in! This was an very
 #simple neural network model (a good place to start) so let’s see how we do if we increase the number of
 #hidden units first to 3 and then to 5:
-nnet3 = neuralnet(strength~cement+slag+ash+water+superplastic+coarseagg+fineagg+age, data=train_norm, hidden=3)
-nnet5 = neuralnet(strength~cement+slag+ash+water+superplastic+coarseagg+fineagg+age, data=train_norm, hidden=5)
-results3 = compute(nnet3, valid_norm[,1:8])
-nnet3PredRescale = results3$net.result*(max(concrete$strength)-min(concrete$strength))+min(concrete$strength)
-nnet3Rsq = cor(nnet3PredRescale,valid$strength)
-nnet3MAPE = mean((nnet3PredRescale-valid$strength)/valid$strength)
+nnet3 = neuralnet(f, data=train_norm, hidden=3)
+nnet5 = neuralnet(f, data=train_norm, hidden=5)
+results3 = compute(nnet3, valid_norm[,1:85])
+nnet3PredRescale = results3$net.result*(max(train$target)-min(train$target))+min(train$target)
+nnet3Rsq = cor(nnet3PredRescale,valid$target)
+nnet3MAPE = mean((nnet3PredRescale-valid$target)/valid$target)
 cat("3 Hidden Unit R-squared after Rescaling:", nnet3Rsq)
 
 cat("3 Hidden Unit MAPE after Rescaling:", nnet3MAPE)
 
-results5 = compute(nnet5, valid_norm[,1:8])
-nnet5PredRescale = results5$net.result*(max(concrete$strength)-min(concrete$strength))+min(concrete$strength)
-nnet5Rsq = cor(nnet5PredRescale,valid$strength)
-nnet5MAPE = mean((nnet5PredRescale-valid$strength)/valid$strength)
+results5 = compute(nnet5, valid_norm[,1:85])
+nnet5PredRescale = results5$net.result*(max(train$target)-min(train$target))+min(train$target)
+nnet5Rsq = cor(nnet5PredRescale,valid$target)
+nnet5MAPE = mean((nnet5PredRescale-valid$target)/valid$target)
 cat("5 Hidden Unit R-squared after Rescaling:", nnet5Rsq)
 
 cat("5 Hidden Unit MAPE after Rescaling:", nnet5MAPE)
