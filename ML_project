@@ -1,0 +1,214 @@
+train = read.csv('MLProjectData.csv', header = TRUE)
+library('randomForest')
+rf = randomForest(target ~ ., data=train, ntree=50, type='class')
+
+#' We can then examine the confusion matrix to see how our model predicts each class:
+
+rf$confusion
+
+#' The classwise error rates are extremely small for the 
+#' entire model! \blue{rf\$err.rate} will show the progression 
+#' of misclassification rates as each individual tree is added 
+#' to the forest for each class and overall (on the out of bag 
+#' (OOB) data that was remaining after the data was sampled to 
+#' train the tree).
+
+#rf$err.rate
+head(rf$err.rate)
+rf$err.rate[50,]
+
+
+#' Let's try to get a sense of how many trees are necessary to get a good 
+#' performance on the test data. (Tuning the hyperparameter ntrees.)
+
+accuracy=vector()
+ntrees=seq(1,400,20)
+i=1
+for(n in ntrees){
+  rf = randomForest(digit ~ ., data=train, ntree=n, type='class')
+  test_pred =  predict(rf,test,type='class')
+  accuracy[i] =  sum(test_pred!=test$digit)/nrow(test)
+  i=i+1
+}
+plot(ntrees, accuracy)
+
+#' Clear that we don't need that many trees here. Effect seems to level off
+#' after 20-100 trees. Let's look over that range.
+
+accuracy=vector()
+ntrees=seq(1,100,2)
+i=1
+for(n in ntrees){
+  rf = randomForest(digit ~ ., data=train, ntree=n, type='class')
+  test_pred =  predict(rf,test,type='class')
+  accuracy[i] =  sum(test_pred!=test$digit)/nrow(test)
+  i=i+1
+}
+
+plot(ntrees, accuracy)
+
+#' We could also play around with the other parameters, like mtry:
+
+accuracy=vector()
+mtry=seq(1,16)
+i=1
+for(m in mtry){
+  rf = randomForest(digit ~ ., data=train,mtry=m, ntree=50, type='class')
+  test_pred =  predict(rf,test,type='class')
+  accuracy[i] =  sum(test_pred!=test$digit)/nrow(test)
+  i=i+1
+}
+
+plot(mtry, accuracy)
+
+#' Can get some good information about variable importance using the importance=T option
+rf = randomForest(target ~ ., data=train,importance = T,ntree=50, type='class')
+#' Tells us which variables are important in prediction of each digit
+importance(rf)
+
+
+###############GRADIENT BOOSTING###############
+ # first prepare the data
+
+library('Matrix')
+sparse_train = sparse.model.matrix(target ~ . -target, data=train)
+#sparse_valid = sparse.model.matrix(target ~ . -target, data=test)
+train_label = as.numeric(levels(train$target))[train$target]
+
+library(xgboost)
+library(readr)
+library(stringr)
+library(caret)
+library(car)
+# tune and run the model
+xgb <- xgboost(data = sparse_train,
+               objective = "reg:linear",
+                   label = train_label,
+                   eta = 0.05,
+                   max_depth = 15,
+                   gamma = 0,
+                   nround=100,
+                   subsample = 0.75,
+                   colsample_bytree = 0.75,
+                   objective = "reg:linear",
+                   nthread = 3,
+                   eval_metric = 'merror',
+                   verbose =0)
+ptrain = predict(xgb, sparse_train)
+pvalid = predict(xgb, sparse_valid)
+table(ptrain,train$target)
+XGBmrt = sum(ptrain!=train$target)/length(train$target)
+XGBmrv = sum(pvalid!=test$target)/length(test$target)
+cat('XGB Training Misclassification Rate:', XGBmrt)
+cat('XGB Validation Misclassification Rate:', XGBmrv)
+
+
+
+######clustering##############
+pendig = rbind(train,test)
+subset1 = pendig[pendig$digit==1 | pendig$target==4 | pendig$target==8, ]
+subset1 = subset1[order(subset1$target),]
+randomIndex=sample(c(T,F), size=3342, replace=T, prob=c(.1,.9))
+PDsubset = subset1[randomIndex,1:16]
+PDsubsetdigit=subset1[randomIndex,"target"]
+PDsubsetdigit=droplevels(PDsubsetdigit) #Drops empty levels of the factor digit.
+#Hierarchical clustering is done with the hclust() function from base R.
+PDdist=dist(PDsubset)
+single = hclust(PDdist, method="single")
+plot(single)
+#k-means clustering can be done with the built in kmeans() function.
+clust=kmeans(PDsubset, 3)
+#We can see how well the digits clustered together by examining a table of digit by cluster number:
+table(PDsubsetdigit,clust$cluster)
+
+###########neural networks################
+x = read.csv('MLProjectData.csv', header = TRUE)
+head(train)
+
+TrainInd = sample(c(T,F),size=1030, replace=T,prob=c(0.8,0.2))
+train=x[TrainInd,]
+valid=x[!TrainInd,]
+
+#test = read.csv('testData.csv', header=TRUE)
+
+#PACKAGE = NEURALNET
+library(neuralnet)
+# 3 figures arranged in 3 rows and 1 column
+attach(train)
+library(tidyverse)
+#For the purposes of our tutorial, we’ll go with range standardization. This
+#will allow us to practice writing a function as well! This normalize function applies to variable vectors,
+#and we’ll need to apply it to every column of our data frame - including the target!
+scaleRange = function(x) {
+  + return((x-min(x))/(max(x)-min(x)))
+}
+
+x$cat1 =as.factor(x$cat1)
+x$cat2 =as.factor(x$cat2)
+
+#temp_norm = as.data.frame(lapply(x, scaleRange))\
+for(i in 1:ncol(x)){
+  
+  if(is.logical(x[, i]) == TRUE) x[, i] <- as.numeric(x[, i]) 
+  
+}
+x$cat1 = model.matrix(~ cat1, data=x)
+x$cat2 = model.matrix(~ cat2, data=x)
+x = scaleRange(x)
+train_norm=x[TrainInd, ]
+valid_norm=x[!TrainInd, ]
+
+#Let’s get started with something simple, a neural network with only one hidden unit, and see how it
+# performs compared to the linear regression. You can then plot the resulting network structure with the
+#associated weights using the plot() command.n <- names(train_)
+
+library(neuralnet)
+n <- names(train_norm)
+f <- as.formula(paste("target ~", paste(n[!n %in% "target"], collapse = " + ")))
+nnet1 = neuralnet(f, data=train_norm, hidden=1)
+#plot(nnet1)
+#To predict the strength variable on the validation data, we’ll need to use the compute() function of the
+#neuralnet package. This function computes not only the final model output (in the $net.result component),
+#but also the computed value at each neuron (in the $neurons component). We’ll only want to retrieve the
+#former. We’ll use the predicted values to calculate a validation R
+# 2 as well as a MAPE.
+results1 = compute(nnet1, valid_norm[,1:8])
+nnet1Pred=results1$net.result
+nnet1Rsq = cor(nnet1Pred,valid_norm$strength)
+nnet1MAPE = mean((nnet1Pred-valid_norm$strength)/valid_norm$strength)
+cat("1 Hidden Unit R-squared:", nnet1Rsq)
+cat("1 Hidden Unit MAPE:", nnet1MAPE)
+# trength. If those minimum strength observations
+#are in our validation data, the MAPE will be undefined. To rescale our predictions to the original measure
+#of strength, we need to multiply them by the range of the original variables and add in the minimum
+#value. We will then recompute both the R
+
+#(which shouldn’t change since we’re only taking a linear
+#transformation of our predictions) and the MAPE for the neural network model.
+nnet1PredRescale = nnet1Pred*(max(concrete$strength)-min(concrete$strength))+min(concrete$strength)
+nnet1Rsq = cor(nnet1PredRescale,valid$strength)
+nnet1MAPE = mean((nnet1PredRescale-valid$strength)/valid$strength)
+cat("1 Hidden Unit R-squared after Rescaling:", nnet1Rsq)
+
+cat("1 Hidden Unit MAPE after Rescaling:", nnet1MAPE)
+
+#Our MAPE is starting to look like something we might have more confidence in! This was an very
+#simple neural network model (a good place to start) so let’s see how we do if we increase the number of
+#hidden units first to 3 and then to 5:
+nnet3 = neuralnet(strength~cement+slag+ash+water+superplastic+coarseagg+fineagg+age, data=train_norm, hidden=3)
+nnet5 = neuralnet(strength~cement+slag+ash+water+superplastic+coarseagg+fineagg+age, data=train_norm, hidden=5)
+results3 = compute(nnet3, valid_norm[,1:8])
+nnet3PredRescale = results3$net.result*(max(concrete$strength)-min(concrete$strength))+min(concrete$strength)
+nnet3Rsq = cor(nnet3PredRescale,valid$strength)
+nnet3MAPE = mean((nnet3PredRescale-valid$strength)/valid$strength)
+cat("3 Hidden Unit R-squared after Rescaling:", nnet3Rsq)
+
+cat("3 Hidden Unit MAPE after Rescaling:", nnet3MAPE)
+
+results5 = compute(nnet5, valid_norm[,1:8])
+nnet5PredRescale = results5$net.result*(max(concrete$strength)-min(concrete$strength))+min(concrete$strength)
+nnet5Rsq = cor(nnet5PredRescale,valid$strength)
+nnet5MAPE = mean((nnet5PredRescale-valid$strength)/valid$strength)
+cat("5 Hidden Unit R-squared after Rescaling:", nnet5Rsq)
+
+cat("5 Hidden Unit MAPE after Rescaling:", nnet5MAPE)
