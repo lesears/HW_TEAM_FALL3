@@ -1,4 +1,20 @@
-train = read.csv('MLProjectData.csv', header = TRUE)
+#train = read.csv('MLProjectData.csv', header = TRUE)
+#test = read.csv('testData.csv, header= TRUE)
+######dealing with data#################
+train = dummy_cols(train, select_columns = c("cat1","cat2"), remove_first_dummy = FALSE,
+                   remove_most_frequent_dummy = FALSE)
+train$cat1 = as.numeric(train$cat1)
+train$cat2 = as.numeric(train$cat2)
+ix <- 62:86 
+train[ix] <- lapply(train[ix], as.numeric) 
+x = read.csv('MLProjectData.csv', header = TRUE)
+head(train)
+
+TrainInd = sample(c(T,F),size=1030, replace=T,prob=c(0.8,0.2))
+train=x[TrainInd,]
+valid=x[!TrainInd,]
+
+#######Random Forest###########3
 library('randomForest')
 rf = randomForest(target ~ ., data=train, ntree=50, type='class')
 
@@ -13,9 +29,9 @@ rf$confusion
 #' (OOB) data that was remaining after the data was sampled to 
 #' train the tree).
 
-#rf$err.rate
-head(rf$err.rate)
-rf$err.rate[50,]
+#rf$err.mse
+head(rf$mse)
+
 
 
 #' Let's try to get a sense of how many trees are necessary to get a good 
@@ -25,9 +41,9 @@ accuracy=vector()
 ntrees=seq(1,400,20)
 i=1
 for(n in ntrees){
-  rf = randomForest(digit ~ ., data=train, ntree=n, type='class')
+  rf = randomForest(target ~ ., data=train, ntree=n, type='class')
   test_pred =  predict(rf,test,type='class')
-  accuracy[i] =  sum(test_pred!=test$digit)/nrow(test)
+  accuracy[i] =  sum(test_pred!=test$target)/nrow(test)
   i=i+1
 }
 plot(ntrees, accuracy)
@@ -39,9 +55,9 @@ accuracy=vector()
 ntrees=seq(1,100,2)
 i=1
 for(n in ntrees){
-  rf = randomForest(digit ~ ., data=train, ntree=n, type='class')
+  rf = randomForest(target ~ ., data=train, ntree=n, type='class')
   test_pred =  predict(rf,test,type='class')
-  accuracy[i] =  sum(test_pred!=test$digit)/nrow(test)
+  accuracy[i] =  sum(test_pred!=test$target)/nrow(test)
   i=i+1
 }
 
@@ -53,9 +69,9 @@ accuracy=vector()
 mtry=seq(1,16)
 i=1
 for(m in mtry){
-  rf = randomForest(digit ~ ., data=train,mtry=m, ntree=50, type='class')
+  rf = randomForest(target ~ ., data=train,mtry=m, ntree=50, type='class')
   test_pred =  predict(rf,test,type='class')
-  accuracy[i] =  sum(test_pred!=test$digit)/nrow(test)
+  accuracy[i] =  sum(test_pred!=test$target)/nrow(test)
   i=i+1
 }
 
@@ -104,23 +120,6 @@ cat('XGB Validation Misclassification Rate:', XGBmrv)
 
 
 
-######clustering##############
-pendig = rbind(train,test)
-subset1 = pendig[pendig$digit==1 | pendig$target==4 | pendig$target==8, ]
-subset1 = subset1[order(subset1$target),]
-randomIndex=sample(c(T,F), size=3342, replace=T, prob=c(.1,.9))
-PDsubset = subset1[randomIndex,1:16]
-PDsubsetdigit=subset1[randomIndex,"target"]
-PDsubsetdigit=droplevels(PDsubsetdigit) #Drops empty levels of the factor digit.
-#Hierarchical clustering is done with the hclust() function from base R.
-PDdist=dist(PDsubset)
-single = hclust(PDdist, method="single")
-plot(single)
-#k-means clustering can be done with the built in kmeans() function.
-clust=kmeans(PDsubset, 3)
-#We can see how well the digits clustered together by examining a table of digit by cluster number:
-table(PDsubsetdigit,clust$cluster)
-
 ###########neural networks################
 x = read.csv('MLProjectData.csv', header = TRUE)
 head(train)
@@ -128,6 +127,7 @@ head(train)
 TrainInd = sample(c(T,F),size=1030, replace=T,prob=c(0.8,0.2))
 train=x[TrainInd,]
 valid=x[!TrainInd,]
+
 
 #test = read.csv('testData.csv', header=TRUE)
 
@@ -143,18 +143,23 @@ scaleRange = function(x) {
   + return((x-min(x))/(max(x)-min(x)))
 }
 
-x$cat1 =as.factor(x$cat1)
-x$cat2 =as.factor(x$cat2)
-
+train = dummy_cols(train, select_columns = c("cat1","cat2"), remove_first_dummy = FALSE,
+           remove_most_frequent_dummy = FALSE)
+train$cat1 = as.numeric(train$cat1)
+train$cat2 = as.numeric(train$cat2)
+ix <- 62:86 
+train[ix] <- lapply(train[ix], as.numeric) 
 #temp_norm = as.data.frame(lapply(x, scaleRange))\
+scaleRange = function(x) {
+    + return((x-min(x))/(max(x)-min(x)))
+  }
 for(i in 1:ncol(x)){
   
   if(is.logical(x[, i]) == TRUE) x[, i] <- as.numeric(x[, i]) 
   
 }
-x$cat1 = model.matrix(~ cat1, data=x)
-x$cat2 = model.matrix(~ cat2, data=x)
-x = scaleRange(x)
+
+x = scaleRange(train)
 train_norm=x[TrainInd, ]
 valid_norm=x[!TrainInd, ]
 
