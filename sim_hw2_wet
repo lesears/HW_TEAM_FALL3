@@ -1,0 +1,136 @@
+################ SIM 2 WET WELL SIMULATION (since SAS was too hard)
+
+# Load libraries
+library(dplyr)
+library(readxl)
+library(graphics)
+library(ks)
+library(EnvStats)
+library(ggplot2)
+library(triangle)
+
+################################ IMPORTING
+
+# Read Excel data
+drilling_costs <- read_excel("C:\\Users\\turne\\OneDrive\\Documents\\Fall 3\\Simulation and Risk\\HW\\Analysis_Data.xlsx",range = "'Drilling Cost'!A4:G51", col_names = FALSE)
+price_projections <- read_excel("C:\\Users\\turne\\OneDrive\\Documents\\Fall 3\\Simulation and Risk\\HW\\Analysis_Data.xlsx",range = "'Price Projections'!A4:D35", col_names = FALSE)
+
+colnames(drilling_costs) <- c("Date","Cost_Crude","Cost_NG","Cost_Dry","AR_Crude","AR_NG","AR_Dry")
+colnames(price_projections) <- c("Year","High_oil_price","Low_oil_price","AEO_Ref")
+
+# Formatting columns
+drilling_costs$AR_Crude <- as.double(drilling_costs$AR_Crude)
+drilling_costs$AR_NG <- as.double(drilling_costs$AR_NG)
+drilling_costs$AR_Dry <- as.double(drilling_costs$AR_Dry)
+drilling_costs$Date <- as.Date(drilling_costs$Date,'%Y/%m/%d')
+
+# Subset to relevant dates (1990-2006)
+drilling_costs <- subset(drilling_costs, drilling_costs$Date > '1989-12-31')
+drilling_costs <- subset(drilling_costs, drilling_costs$Date < '2007-01-01')
+
+#Averaging 2006 drilling costs
+Start_drilling_cost <- (drilling_costs$Cost_Crude[17]+drilling_costs$Cost_NG[17]+drilling_costs$Cost_Dry[17])/3
+
+#Vectorizing 48 arithmetic returns (1991-2006)
+drill_vec <- c(drilling_costs$AR_Crude[-1],drilling_costs$AR_NG[-1],drilling_costs$AR_Dry[-1])
+
+################################### CREATING OBJECTS, FUNCTIONS
+
+standardize <- function(x){
+  x.std = (x - mean(x))/sd(x)
+  return(x.std)
+}
+
+destandardize <- function(x.std, x){
+  x.old = (x.std * sd(x)) + mean(x)
+  return(x.old)
+}
+
+
+#number of iterations. simulated yrs
+###################
+###################                   <<<<<<<
+              #####               <<<<<<<<
+n <- 100000   #####             <<<<<<<<=================================
+yrs <- 15     #####            <<<<<<<  =================================
+              #####             <<<<<<<<=================================
+###################               <<<<<<<
+###################                   <<<<<<<
+
+
+#Create objects
+finalCost <- rep(0,n)
+seismicCost <- rep(0,n)
+leaseCost <- rep(0,n)
+overhead <- rep(0,n)
+completionCost <- rep(0,n)
+NPV <- rep(0,n)
+
+taxRate <- 0.046
+WACC <- 0.1
+oilPrice <- rep(0,yrs)
+oilProd <- rep(0,yrs)
+opCost <- rep(0,yrs)
+x <- rep(0,yrs)
+
+###################################### YEAR 0
+
+for (i in 1:n){
+  
+  leaseCost[i] <- 960 * rnorm(n=1, mean = 600, sd = 50)
+  seismicCost[i] <- 43000 * rnorm(n=1, mean = 3, sd = 0.35)
+  completionCost[i] <- rnorm(n=1, mean = 390000, sd = 50000)
+  overhead[i] <- rtri(n=1, min = 17200, max = 279500, mode = 215000)
+}  
+
+##################################### YEAR 1+
+
+for (i in 1:n){
+  
+  #correlated inputs (the impossible task in SAS)
+  
+  initialProd <- rlnorm(n=n, meanlog = 6, sdlog = .28)
+  declineRate <- runif(n=n, min = 0.15, max = 0.32)
+  
+  R <- matrix(data=cbind(1, 0.64, 0.64, 1), nrow=2)
+  U <- t(chol(R))
+  
+  Both <- cbind(standardize(declineRate), standardize(initialProd))
+  Both_corr <- U %*% t(Both) 
+  Both_corr <- t(Both_corr)
+  
+  initialProd <- destandardize(Both_corr[,2], initialProd)
+  declineRate <- destandardize(Both_corr[,1], declineRate)
+  
+  begRate <- initialProd[1]
+  
+  for (k in 1:yrs){
+    
+    endRate <- (1-declineRate[1]) * begRate
+    oilProd[k] <- 365 * (begRate + endRate) / 2
+  }
+  
+  for (k in 1:yrs){
+    oilPrice[k] <- rtri(n=1, min = price_projections$Low_oil_price[k], max = price_projections$High_oil_price[k], mode = price_projections$AEO_Ref[k])
+  }
+  
+  netRevInt <- rnorm(n=1, mean = 0.75, sd = 0.02)
+  
+  for (k in 1:yrs){
+    opCost[k] <- rnorm(n=1, mean = 2.25, sd = 0.3)
+  }
+  
+  for (k in 1:yrs){
+    x[k] <- (1+WACC)^k
+  }
+  
+  rev <- oilProd * oilPrice * netRevInt * (1 - taxRate)
+  year0cost <- finalCost[i] + seismicCost[i] + leaseCost[i] + overhead[i] + completionCost[i]
+  accruedCost <- overhead[i] + opCost * oilProd
+  finalNetRev <- rev - accruedCost
+  NPV[i] <- -1 * year0cost + sum(finalNetRev/x)
+}
+
+####################################### PLOTTING THE AWESOMENESS
+
+hist(NPV, breaks=100, main='2019: NPV for 15-Years of Wet Well', xlab='NPV ($)')
