@@ -11,8 +11,8 @@ x = read.csv('MLProjectData.csv', header = TRUE)
 head(train)
 
 TrainInd = sample(c(T,F),size=1030, replace=T,prob=c(0.8,0.2))
-train=x[TrainInd,]
-valid=x[!TrainInd,]
+train=train[TrainInd,]
+valid=train[!TrainInd,]
 
 #######Random Forest###########3
 library('randomForest')
@@ -42,8 +42,8 @@ ntrees=seq(1,400,20)
 i=1
 for(n in ntrees){
   rf = randomForest(target ~ ., data=train, ntree=n, type='class')
-  test_pred =  predict(rf,test,type='class')
-  accuracy[i] =  sum(test_pred!=test$target)/nrow(test)
+  test_pred =  predict(rf,valid,type='class')
+  accuracy[i] =  sum(test_pred!=valid$target)/nrow(valid)
   i=i+1
 }
 plot(ntrees, accuracy)
@@ -56,8 +56,8 @@ ntrees=seq(1,100,2)
 i=1
 for(n in ntrees){
   rf = randomForest(target ~ ., data=train, ntree=n, type='class')
-  test_pred =  predict(rf,test,type='class')
-  accuracy[i] =  sum(test_pred!=test$target)/nrow(test)
+  test_pred =  predict(rf,valid,type='class')
+  accuracy[i] =  sum(test_pred!=valid$target)/nrow(valid)
   i=i+1
 }
 
@@ -70,8 +70,8 @@ mtry=seq(1,16)
 i=1
 for(m in mtry){
   rf = randomForest(target ~ ., data=train,mtry=m, ntree=50, type='class')
-  test_pred =  predict(rf,test,type='class')
-  accuracy[i] =  sum(test_pred!=test$target)/nrow(test)
+  test_pred =  predict(rf,valid,type='class')
+  accuracy[i] =  sum(test_pred!=valid$target)/nrow(valid)
   i=i+1
 }
 
