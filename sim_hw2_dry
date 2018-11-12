@@ -1,0 +1,30 @@
+libname sim 'C:\Users\turne\OneDrive\Documents\Fall 3\Simulation and Risk\HW';
+
+/* Simulation */
+%let Simulation_Size = 10000;
+
+*************************************;
+/*			DRY WELL				*/
+*************************************;
+
+data hw2_dry;
+
+	do i=1 to &simulation_size;
+    
+		/* year 0 expenses */
+		lease_cost = 960*RAND('Normal',600,50);
+		seismic_cost = 43000*RAND('Normal',3,0.35);
+		prof_overhead = 172000 + 107500*RAND('Triangle',0.4);
+
+	    NPV_dry = -lease_cost - seismic_cost - prof_overhead;
+
+		output;
+	end;
+run; 
+
+proc sgplot data=hw2_dry;
+	histogram NPV_dry;
+	format NPV_dry dollar12.2;
+	label NPV_dry = 'Net Present Value ($), Dry Well';
+	keylegend / location=inside position=topright;
+run;
