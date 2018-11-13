@@ -1,0 +1,48 @@
+ 𝑃�𝑒𝑎𝑙 × 𝑃𝑆𝑡𝑟𝑢𝑐𝑡𝑢𝑟𝑒
+  #We will assume only two of these can actually change. Figure 1 shows the probability distributions for
+  #each factor’s Monte Carlo assumption.
+  #Dry-Hole Risk
+  #Factor
+  #Mean Standard Dev. Min. Max.
+  #Hydrocarbons 99% 5% 0% 100%
+    #Structure 100% 0% 100% 100%
+    #Reservoir 80% 10% 0% 100%
+    #Seal 100% 0% 100% 100%
+  # The total number of planned wells is assumed a Uniform
+  #distribution between 10 and 30.
+  
+  # Set null vector
+  pw <- rep(0,10000)
+  PH = rep(0,10000)
+  PR =rep(0,10000)
+  PSEAL = rep(0,10000)
+  PSTRUCT = rep(0,10000)
+  Ppw = rep(0,10000)
+  bernul = rep(0,10000)
+  Y=rep(0,10000)
+  
+  
+  # Run 10000 iterations of our distributions
+  for(i in 1:10000){
+    PH[i] <- rnorm(n=1, mean =.99, sd=.05)
+  
+    PR[i] = rnorm(n=1, mean =.80, sd =.10 )
+ 
+    PSEAL[i] = rnorm(n=1, mean=1, sd=0)
+    
+    PSTRUCT[i] = rnorm(n=1, mean =1, sd=0)
+    # Calculate PW probability 
+    Ppw[i] <- PH[i]*PR[i]*PSEAL[i]*PSTRUCT[i]
+  }
+  
+for(j in 1:10000){
+      Y[j]=rbinom(n=1,1,Ppw[j])
+      pw[j] = runif(n=1, min = 10, max = 30)
+}
+        
+hist(pw)
+hist(Y)
+VaR = quantile(pw, 0.05)
+CVaR = mean(pw[pw<=10.97145])
+        
+    
