@@ -1,28 +1,35 @@
-train = read.csv('MLProjectData.csv', header = TRUE)
+x = read.csv('MLProjectData.csv', header = TRUE)
 #test = read.csv('testData.csv, header= TRUE)
 ######dealing with data#################
-train = dummy_cols(train, select_columns = c("cat1","cat2"), remove_first_dummy = FALSE,
+###dummy variables for categorical#####
+train = dummy_cols(x, select_columns = c("cat1","cat2"), remove_first_dummy = FALSE,
                    remove_most_frequent_dummy = FALSE)
-train$cat1 = as.numeric(train$cat1)
-train$cat2 = as.numeric(train$cat2)
+#train$cat1 = as.numeric(train$cat1)
+#train$cat2 = as.numeric(train$cat2)
+####make logical variables binary#####
 ix <- 62:86 
 train[ix] <- lapply(train[ix], as.numeric) 
 #x = read.csv('MLProjectData.csv', header = TRUE)
 head(train)
-
+####80/20 split into train and validation####
 TrainInd = sample(c(T,F),size=1030, replace=T,prob=c(0.8,0.2))
 train=train[TrainInd,]
 valid=train[!TrainInd,]
 
-####BASELINE####
-library(OneR)
-model = OneR(train, verbose = TRUE)
-prediction <- predict(model, train)
-eval_model(prediction, train)
+####BASELINE- SLR####
+model = lm(target~., data = train)
+predictions = predict(model,train)
+MAE_base= sum(abs(train$target-predictions)/length(train$target))
+
+predictions2 = predict(model,valid)
+MA_base2= sum(abs(train$valid-predictions)/length(valid$target))
+
+
 #######Random Forest###########3
 library('randomForest')
-rf = randomForest(target ~ ., data=train, mtry = 5, ntree=100)
 
+####run random forest on training data against all variables####
+rf = randomForest(target ~ ., data=train, mtry = 5, ntree=500)
 MAE = sum(abs(train$target-rf$predicted))/length(train$target)
 
 
@@ -33,13 +40,13 @@ MAE = sum(abs(train$target-rf$predicted))/length(train$target)
 
 #' Let's try to get a sense of how many trees are necessary to get a good 
 #' performance on the test data. (Tuning the hyperparameter ntrees.)
-
+######how many trees#####
 accuracy=vector()
 ntrees=seq(1,70,20)
 i=1
 for(n in ntrees){
-  rf = randomForest(target ~ ., data=train, ntree=n, type='regression')
-  test_pred =  predict(rf,valid,type='regression')
+  rf = randomForest(target ~ ., data=train, ntree=n, type='response')
+  test_pred =  predict(rf,valid,type='response')
   accuracy[i] =  sum(test_pred!=valid$target)/nrow(valid)
   i=i+1
 }
@@ -47,13 +54,13 @@ plot(ntrees, accuracy)
 
 #' Clear that we don't need that many trees here. Effect seems to level off
 #' after 20-100 trees. Let's look over that range.
-
+######how many trees######
 accuracy=vector()
 ntrees=seq(1,100,2)
 i=1
 for(n in ntrees){
-  rf = randomForest(target ~ ., data=train, ntree=n, type='regression')
-  test_pred =  predict(rf,valid,type='reression')
+  rf = randomForest(target ~ ., data=train, ntree=n, type='response')
+  test_pred =  predict(rf,valid,type='response')
   accuracy[i] =  sum(test_pred!=valid$target)/nrow(valid)
   i=i+1
 }
@@ -63,11 +70,11 @@ plot(ntrees, accuracy)
 #' We could also play around with the other parameters, like mtry:
 
 accuracy=vector()
-mtry=seq(1,5)
+mtry=seq(1,10)
 i=1
 for(m in mtry){
-  rf = randomForest(target ~ ., data=train,mtry=m, ntree=40, type='regression')
-  test_pred =  predict(rf,valid,type='regression')
+  rf = randomForest(target ~ ., data=train,mtry=m, ntree=500, type='response')
+  test_pred =  predict(rf,valid,type='response')
   accuracy[i] =  sum(test_pred!=valid$target)/nrow(valid)
   i=i+1
 }
@@ -84,9 +91,11 @@ importance(rf)
  # first prepare the data
 
 library('Matrix')
+
+###code below does categoricals (everything from the beginning)####
 sparse_train = sparse.model.matrix(target ~ . -target, data=train)
-#sparse_valid = sparse.model.matrix(target ~ . -target, data=test)
-train_label = as.numeric(levels(train$target))[train$target]
+sparse_valid = sparse.model.matrix(target ~ . -target, data=valid)
+#label = our target
 
 library(xgboost)
 library(readr)
@@ -94,43 +103,33 @@ library(stringr)
 library(caret)
 library(car)
 # tune and run the model
+#mat =as.matrix(train)
+#mat_v = as.matrix(valid)
 xgb <- xgboost(data = sparse_train,
                objective = "reg:linear",
-                   label = train_label,
+                   label = train$target ,
                    eta = 0.05,
                    max_depth = 15,
                    gamma = 0,
                    nround=100,
                    subsample = 0.75,
                    colsample_bytree = 0.75,
-                   objective = "reg:linear",
                    nthread = 3,
-                   eval_metric = 'merror',
+                    eval_metric = 'rmse',
                    verbose =0)
 ptrain = predict(xgb, sparse_train)
 pvalid = predict(xgb, sparse_valid)
 table(ptrain,train$target)
-XGBmrt = sum(ptrain!=train$target)/length(train$target)
-XGBmrv = sum(pvalid!=test$target)/length(test$target)
-cat('XGB Training Misclassification Rate:', XGBmrt)
-cat('XGB Validation Misclassification Rate:', XGBmrv)
+XGBmrt = sum(abs(train$target-ptrain))/length(train$target)
+XGBmrv = sum(abs(valid$target-pvalid))/length(valid$target)
+cat('XGB MAE:', XGBmrt)
+cat('XGB MAE:', XGBmrv)
 
 
 
 ###########neural networks################
-x = read.csv('MLProjectData.csv', header = TRUE)
-head(train)
-
-TrainInd = sample(c(T,F),size=1030, replace=T,prob=c(0.8,0.2))
-train=x[TrainInd,]
-valid=x[!TrainInd,]
-
-
-#test = read.csv('testData.csv', header=TRUE)
-
 #PACKAGE = NEURALNET
 library(neuralnet)
-# 3 figures arranged in 3 rows and 1 column
 attach(train)
 library(tidyverse)
 #For the purposes of our tutorial, we’ll go with range standardization. This
@@ -140,10 +139,14 @@ scaleRange = function(x) {
   + return((x-min(x))/(max(x)-min(x)))
 }
 
-
+train_nn = train
 #temp_norm = as.data.frame(lapply(x, scaleRange))\
+train_nn$cat1 = NULL
+train_nn$cat2 = NULL
+train_nn = as.numeric(train_nn)
 
-x = scaleRange(train)
+
+x = scaleRange(train_nn)
 train_norm=x[TrainInd, ]
 valid_norm=x[!TrainInd, ]
 
@@ -161,7 +164,8 @@ nnet1 = neuralnet(f, data=train_norm, hidden=2)
 #but also the computed value at each neuron (in the $neurons component). We’ll only want to retrieve the
 #former. We’ll use the predicted values to calculate a validation R
 # 2 as well as a MAPE.
-results1 = compute(nnet1, valid_norm[1:85])
+mat_valid = as.matrix(valid_norm)
+results1 = neuralnet::compute(nnet1, valid_norm[1:85])
 nnet1Pred=results1$net.result
 nnet1Rsq = cor(nnet1Pred,valid_norm$target)
 nnet1MAPE = mean((nnet1Pred-valid_norm$target)/valid_norm$target)
@@ -176,9 +180,9 @@ cat("1 Hidden Unit MAPE:", nnet1MAPE)
 
 #(which shouldn’t change since we’re only taking a linear
 #transformation of our predictions) and the MAPE for the neural network model.
-nnet1PredRescale = nnet1Pred*(max(train$target)-min(train$target))+min(train$target)
-nnet1Rsq = cor(nnet1PredRescale,valid$target)
-nnet1MAPE = mean((nnet1PredRescale-valid$target)/valid$target)
+nnet1PredRescale = nnet1Pred*(max(train_norm$target)-min(train_norm$target))+min(train_norm$target)
+nnet1Rsq = cor(nnet1PredRescale,valid_norm$target)
+nnet1MAPE = mean((nnet1PredRescale-valid_norm$target)/valid_norm$target)
 cat("1 Hidden Unit R-squared after Rescaling:", nnet1Rsq)
 
 cat("1 Hidden Unit MAPE after Rescaling:", nnet1MAPE)
@@ -189,17 +193,17 @@ cat("1 Hidden Unit MAPE after Rescaling:", nnet1MAPE)
 nnet3 = neuralnet(f, data=train_norm, hidden=3)
 nnet5 = neuralnet(f, data=train_norm, hidden=5)
 results3 = compute(nnet3, valid_norm[,1:85])
-nnet3PredRescale = results3$net.result*(max(train$target)-min(train$target))+min(train$target)
-nnet3Rsq = cor(nnet3PredRescale,valid$target)
-nnet3MAPE = mean((nnet3PredRescale-valid$target)/valid$target)
+nnet3PredRescale = results3$net.result*(max(train_norm$target)-min(train_norm$target))+min(train_norm$target)
+nnet3Rsq = cor(nnet3PredRescale,valid_norm$target)
+nnet3MAPE = mean((nnet3PredRescale-valid_norm$target)/train_norm$target)
 cat("3 Hidden Unit R-squared after Rescaling:", nnet3Rsq)
 
 cat("3 Hidden Unit MAPE after Rescaling:", nnet3MAPE)
 
 results5 = compute(nnet5, valid_norm[,1:85])
-nnet5PredRescale = results5$net.result*(max(train$target)-min(train$target))+min(train$target)
-nnet5Rsq = cor(nnet5PredRescale,valid$target)
-nnet5MAPE = mean((nnet5PredRescale-valid$target)/valid$target)
+nnet5PredRescale = results5$net.result*(max(train_norm$target)-min(train_norm$target))+min(train_norm$target)
+nnet5Rsq = cor(nnet5PredRescale,valid_norm$target)
+nnet5MAPE = mean((nnet5PredRescale-valid_norm$target)/valid_norm$target)
 cat("5 Hidden Unit R-squared after Rescaling:", nnet5Rsq)
 
 cat("5 Hidden Unit MAPE after Rescaling:", nnet5MAPE)
