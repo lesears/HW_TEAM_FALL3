@@ -7,7 +7,7 @@ train$cat1 = as.numeric(train$cat1)
 train$cat2 = as.numeric(train$cat2)
 ix <- 62:86 
 train[ix] <- lapply(train[ix], as.numeric) 
-x = read.csv('MLProjectData.csv', header = TRUE)
+#x = read.csv('MLProjectData.csv', header = TRUE)
 head(train)
 
 TrainInd = sample(c(T,F),size=1030, replace=T,prob=c(0.8,0.2))
@@ -21,9 +21,9 @@ prediction <- predict(model, train)
 eval_model(prediction, train)
 #######Random Forest###########3
 library('randomForest')
-rf = randomForest(target ~ ., data=train, mtry = 5, ntree=60)
+rf = randomForest(target ~ ., data=train, mtry = 5, ntree=100)
 
-
+MAE = sum(abs(train$target-rf$predicted))/length(train$target)
 
 
 #rf$err.mse
@@ -38,8 +38,8 @@ accuracy=vector()
 ntrees=seq(1,70,20)
 i=1
 for(n in ntrees){
-  rf = randomForest(target ~ ., data=train, ntree=n, type='class')
-  test_pred =  predict(rf,valid,type='class')
+  rf = randomForest(target ~ ., data=train, ntree=n, type='regression')
+  test_pred =  predict(rf,valid,type='regression')
   accuracy[i] =  sum(test_pred!=valid$target)/nrow(valid)
   i=i+1
 }
@@ -52,8 +52,8 @@ accuracy=vector()
 ntrees=seq(1,100,2)
 i=1
 for(n in ntrees){
-  rf = randomForest(target ~ ., data=train, ntree=n, type='class')
-  test_pred =  predict(rf,valid,type='class')
+  rf = randomForest(target ~ ., data=train, ntree=n, type='regression')
+  test_pred =  predict(rf,valid,type='reression')
   accuracy[i] =  sum(test_pred!=valid$target)/nrow(valid)
   i=i+1
 }
@@ -66,8 +66,8 @@ accuracy=vector()
 mtry=seq(1,5)
 i=1
 for(m in mtry){
-  rf = randomForest(target ~ ., data=train,mtry=m, ntree=40, type='class')
-  test_pred =  predict(rf,valid,type='class')
+  rf = randomForest(target ~ ., data=train,mtry=m, ntree=40, type='regression')
+  test_pred =  predict(rf,valid,type='regression')
   accuracy[i] =  sum(test_pred!=valid$target)/nrow(valid)
   i=i+1
 }
@@ -140,21 +140,8 @@ scaleRange = function(x) {
   + return((x-min(x))/(max(x)-min(x)))
 }
 
-train = dummy_cols(train, select_columns = c("cat1","cat2"), remove_first_dummy = FALSE,
-           remove_most_frequent_dummy = FALSE)
-train$cat1 = as.numeric(train$cat1)
-train$cat2 = as.numeric(train$cat2)
-ix <- 62:86 
-train[ix] <- lapply(train[ix], as.numeric) 
+
 #temp_norm = as.data.frame(lapply(x, scaleRange))\
-scaleRange = function(x) {
-    + return((x-min(x))/(max(x)-min(x)))
-  }
-for(i in 1:ncol(x)){
-  
-  if(is.logical(x[, i]) == TRUE) x[, i] <- as.numeric(x[, i]) 
-  
-}
 
 x = scaleRange(train)
 train_norm=x[TrainInd, ]
@@ -167,7 +154,7 @@ valid_norm=x[!TrainInd, ]
 library(neuralnet)
 n <- names(train_norm)
 f <- as.formula(paste("target ~", paste(n[!n %in% "target"], collapse = " + ")))
-nnet1 = neuralnet(f, data=train_norm, hidden=1)
+nnet1 = neuralnet(f, data=train_norm, hidden=2)
 #plot(nnet1)
 #To predict the strength variable on the validation data, we’ll need to use the compute() function of the
 #neuralnet package. This function computes not only the final model output (in the $net.result component),
@@ -180,6 +167,8 @@ nnet1Rsq = cor(nnet1Pred,valid_norm$target)
 nnet1MAPE = mean((nnet1Pred-valid_norm$target)/valid_norm$target)
 cat("1 Hidden Unit R-squared:", nnet1Rsq)
 cat("1 Hidden Unit MAPE:", nnet1MAPE)
+
+
 # trength. If those minimum strength observations
 #are in our validation data, the MAPE will be undefined. To rescale our predictions to the original measure
 #of strength, we need to multiply them by the range of the original variables and add in the minimum
