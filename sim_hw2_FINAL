@@ -90,20 +90,11 @@ for(i in 1:n){
 
 
 #Create objects
-finalCost <- rep(0,n)
 seismicCost <- rep(0,n)
 leaseCost <- rep(0,n)
 overhead <- rep(0,n)
-completionCost <- rep(0,n)
-NPVwet <- rep(0,n)
 NPVdry <- rep(0,n)
 
-taxRate <- 0.046
-WACC <- 0.1
-oilPrice <- rep(0,yrs)
-oilProd <- rep(0,yrs)
-opCost <- rep(0,yrs)
-x <- rep(0,yrs)
 
 ############# DRY WELL ################
 
@@ -116,11 +107,25 @@ for (i in 1:n){
   NPVdry[i] <- -Drill2019[i] -leaseCost[i] - seismicCost[i] - overhead[i]
 } 
 
-hist(NPVdry, breaks=25, main='2019: NPV for Dry Well', xlab='NPV ($)')
+hist(NPVdry, breaks=100, main='2019: Simulated Net Present Value for Dry Well', xlab='Net Present Value ($)')
 
 
 ############# WET WELL ################
 
+
+#Create objects
+finalCost <- rep(0,n)
+seismicCost <- rep(0,n)
+leaseCost <- rep(0,n)
+overhead <- rep(0,n)
+completionCost <- rep(0,n)
+oilPrice <- rep(0,yrs)
+oilProd <- rep(0,yrs)
+opCost <- rep(0,yrs)
+x <- rep(0,yrs)
+NPVwet <- rep(0,n)
+taxRate <- 0.046
+WACC <- 0.1
 
 ###################################### YEAR 0
 
@@ -182,4 +187,4 @@ for (i in 1:n){
 
 ####################################### PLOTTING THE AWESOMENESS
 
-hist(NPVwet, breaks=100, main='2019: NPV for 15-Years of Wet Well', xlab='NPV ($)')
+hist(NPVwet, breaks=100, main='2019: Simulated Net Present Value for 15-Year Wet Well', xlab='Net Present Value ($)')
