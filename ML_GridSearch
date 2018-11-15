@@ -1,12 +1,13 @@
 
 #####expand grid shows all possible parameters that you can then set a range for######
 dtrain <- xgb.DMatrix(data = sparse_train[1:nrow(train), ], label = train$target) 
-dtest <- xgb.DMatrix(data = valid_sparse[(nrow(train_df)+1):nrow(data), ])
-searchGridSubCol <- expand.grid(subsample = c(0.5, 0.6), 
-                                colsample_bytree = c(0.5, 0.6),
+dvalid <- xgb.DMatrix(data = sparse_valid[1:nrow(valid), ], label = valid$target) 
+#dtest <- xgb.DMatrix(data = sparse_test[(nrow(train_df)+1):nrow(data), ])
+searchGridSubCol <- expand.grid(subsample = c(0.2, 0.8), 
+                                colsample_bytree = c(0.2, 0.9),
                                 max_depth = c(3, 4),
                                 min_child = seq(1), 
-                                eta = c(0.01)
+                                eta = c(0.01,0.05)
 )
 
 ntrees <- 500
