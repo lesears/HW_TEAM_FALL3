@@ -1,5 +1,5 @@
 x = read.csv('MLProjectData.csv', header = TRUE)
-#test = read.csv('testData.csv, header= TRUE)
+test = read.csv('testData.csv', header= TRUE)
 ######dealing with data#################
 ###dummy variables for categorical#####
 train = dummy_cols(x, select_columns = c("cat1","cat2"), remove_first_dummy = FALSE,
@@ -82,7 +82,7 @@ for(m in mtry){
 plot(mtry, accuracy)
 
 #' Can get some good information about variable importance using the importance=T option
-rf = randomForest(target ~ ., data=train,importance = T,ntree=40)
+rf = randomForest(target ~ ., data=train,importance = T,ntree=100)
 #' Tells us which variables are important in prediction of each digit
 importance(rf)
 
@@ -105,9 +105,12 @@ library(car)
 # tune and run the model
 #mat =as.matrix(train)
 #mat_v = as.matrix(valid)
-xgb <- xgboost(data = sparse_train,
+dtrain <- xgb.DMatrix(data = sparse_train[1:nrow(train), ], label = train$target)
+dvalid <- xgb.DMatrix(data = sparse_valid[1:nrow(valid), ], label = valid$target)
+#test_mat = as.matrix(test)
+#dtest <- xgb.DMatrix(data = test[(nrow(test)+1):nrow(test)])
+xgb <- xgboost(data = dtrain,
                objective = "reg:linear",
-                   label = train$target ,
                    eta = 0.05,
                    max_depth = 15,
                    gamma = 0,
@@ -117,8 +120,8 @@ xgb <- xgboost(data = sparse_train,
                    nthread = 3,
                     eval_metric = 'rmse',
                    verbose =0)
-ptrain = predict(xgb, sparse_train)
-pvalid = predict(xgb, sparse_valid)
+ptrain = predict(xgb, dtrain)
+pvalid = predict(xgb, dvalid)
 table(ptrain,train$target)
 XGBmrt = sum(abs(train$target-ptrain))/length(train$target)
 XGBmrv = sum(abs(valid$target-pvalid))/length(valid$target)
