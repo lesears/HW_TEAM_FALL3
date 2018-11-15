@@ -29,7 +29,7 @@ drilling_costs <- subset(drilling_costs, drilling_costs$Date > '1989-12-31')
 drilling_costs <- subset(drilling_costs, drilling_costs$Date < '2007-01-01')
 
 #Averaging 2006 drilling costs
-Start_drilling_cost <- (drilling_costs$Cost_Crude[17]+drilling_costs$Cost_NG[17]+drilling_costs$Cost_Dry[17])/3
+Start_drilling_cost <- (drilling_costs$Cost_Crude[17] +drilling_costs$Cost_NG[17] +drilling_costs$Cost_Dry[17])/3
 
 #Vectorizing 48 arithmetic returns (1991-2006)
 drill_vec <- c(drilling_costs$AR_Crude[-1],drilling_costs$AR_NG[-1],drilling_costs$AR_Dry[-1])
@@ -109,7 +109,7 @@ for (i in 1:n){
 
 hist(NPVdry, breaks=100, main='2019: Simulated Net Present Value for Dry Well', xlab='Net Present Value ($)')
 
-
+#median(NPVdry) = $-4,435,826
 ############# WET WELL ################
 
 
@@ -188,3 +188,5 @@ for (i in 1:n){
 ####################################### PLOTTING THE AWESOMENESS
 
 hist(NPVwet, breaks=100, main='2019: Simulated Net Present Value for 15-Year Wet Well', xlab='Net Present Value ($)')
+
+#median(NPVwet) = $49,396,410
