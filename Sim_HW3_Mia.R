@@ -91,5 +91,6 @@ hist(results,main='distribution of proportion of wells that is producing', xlab=
 hist(ph,main='distribution of probability of hydrocarbon', xlab='probability')
 hist(pr,main='distribution of probability of reservior', xlab='probability')
 
+
 VaR.results = quantile(results, 0.05)
-CVaR = mean(pw[res<=10.97145])
+CVaR = mean(results[results<=0.591])
