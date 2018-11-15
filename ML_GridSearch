@@ -1,0 +1,39 @@
+
+#####expand grid shows all possible parameters that you can then set a range for######
+dtrain <- xgb.DMatrix(data = sparse_train[1:nrow(train), ], label = train$target) 
+dtest <- xgb.DMatrix(data = valid_sparse[(nrow(train_df)+1):nrow(data), ])
+searchGridSubCol <- expand.grid(subsample = c(0.5, 0.6), 
+                                colsample_bytree = c(0.5, 0.6),
+                                max_depth = c(3, 4),
+                                min_child = seq(1), 
+                                eta = c(0.01)
+)
+
+ntrees <- 500
+system.time(
+  rmseErrorsHyperparameters <- apply(searchGridSubCol, 1, function(parameterList){
+    
+    #Extract Parameters to test
+    currentSubsampleRate <- parameterList[["subsample"]]
+    currentColsampleRate <- parameterList[["colsample_bytree"]]
+    currentDepth <- parameterList[["max_depth"]]
+    currentEta <- parameterList[["eta"]]
+    currentMinChild <- parameterList[["min_child"]]
+    xgboostModelCV <- xgb.cv(data =  dtrain, nrounds = ntrees, nfold = 2, showsd = TRUE, 
+                             metrics = "rmse", verbose = TRUE, "eval_metric" = "rmse",
+                             "objective" = "reg:linear", "max.depth" = currentDepth, "eta" = currentEta,                               
+                             "subsample" = currentSubsampleRate, "colsample_bytree" = currentColsampleRate
+                             , print_every_n = 10, "min_child_weight" = currentMinChild, booster = "gbtree",
+                             early_stopping_rounds = 10)
+    
+    xvalidationScores <- as.data.frame(xgboostModelCV$evaluation_log)
+    rmse <- tail(xvalidationScores$test_rmse_mean, 1)
+    trmse <- tail(xvalidationScores$train_rmse_mean,1)
+    output <- return(c(rmse, trmse, currentSubsampleRate, currentColsampleRate, currentDepth, currentEta, currentMinChild))
+    
+  }))
+output <- as.data.frame(t(rmseErrorsHyperparameters))
+head(output)
+varnames <- c("TestRMSE", "TrainRMSE", "SubSampRate", "ColSampRate", "Depth", "eta", "currentMinChild")
+names(output) <- varnames
+head(output)
