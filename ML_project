@@ -12,6 +12,7 @@ train[ix] <- lapply(train[ix], as.numeric)
 #x = read.csv('MLProjectData.csv', header = TRUE)
 head(train)
 ####80/20 split into train and validation####
+set.seed(123)
 TrainInd = sample(c(T,F),size=1030, replace=T,prob=c(0.8,0.2))
 train=train[TrainInd,]
 valid=train[!TrainInd,]
@@ -147,6 +148,12 @@ train_nn = train
 train_nn$cat1 = NULL
 train_nn$cat2 = NULL
 train_nn = as.numeric(train_nn)
+valid_nn = valid
+#temp_norm = as.data.frame(lapply(x, scaleRange))\
+valid_nn$cat1 = NULL
+valid_nn$cat2 = NULL
+valid_nn = as.numeric(valid_nn)
+
 
 
 x = scaleRange(train_nn)
@@ -174,6 +181,7 @@ nnet1Rsq = cor(nnet1Pred,valid_norm$target)
 nnet1MAPE = mean((nnet1Pred-valid_norm$target)/valid_norm$target)
 cat("1 Hidden Unit R-squared:", nnet1Rsq)
 cat("1 Hidden Unit MAPE:", nnet1MAPE)
+MAE_nnet = sum(abs(nnetPred1 - train_norm$target))/length(nnetPred1)
 
 
 # trength. If those minimum strength observations
@@ -186,6 +194,7 @@ cat("1 Hidden Unit MAPE:", nnet1MAPE)
 nnet1PredRescale = nnet1Pred*(max(train_norm$target)-min(train_norm$target))+min(train_norm$target)
 nnet1Rsq = cor(nnet1PredRescale,valid_norm$target)
 nnet1MAPE = mean((nnet1PredRescale-valid_norm$target)/valid_norm$target)
+#nnet1MAE = sum(abs(nnet1PredRescale-train_norm$target))/length(train_norm$target)
 cat("1 Hidden Unit R-squared after Rescaling:", nnet1Rsq)
 
 cat("1 Hidden Unit MAPE after Rescaling:", nnet1MAPE)
@@ -210,3 +219,80 @@ nnet5MAPE = mean((nnet5PredRescale-valid_norm$target)/valid_norm$target)
 cat("5 Hidden Unit R-squared after Rescaling:", nnet5Rsq)
 
 cat("5 Hidden Unit MAPE after Rescaling:", nnet5MAPE)
+######################################################################
+######################################################################
+######################################################################
+
+# Let's try Ridge Regression then...
+
+#' 
+#' The glmnet package does not use a model formula but instead requires a design matrix
+#' with no intercept column, and a vector containing the target variable. 
+#' 
+#' This package kindly does all the work of cross-validation for us. We can choose the ridge
+#' parameter lambda by trying many different values and seeing which one works best on 
+#' cross-validation.
+
+#install.packages("glmnet")
+library(glmnet)
+set.seed(1)
+grid = 10^seq(10,-2,length=100) #' values for lambda you want to try. You can
+#' also let the cv.glmnet() function decide on
+#' an appropriate interval to test simply by
+#' omitting the lambda= option.
+train_reg=as.matrix(train_nn)
+valid_reg = as.matrix(valid_nn)
+cv.out = cv.glmnet(train_reg, train_nn$target, alpha=0, lambda=grid) #' Only using training data
+#' for CV!
+plot(cv.out)
+
+# Find the value of lambda from cross-validation and see how the resulting model works on the
+# test data.
+
+bestlambda=cv.out$lambda.min
+bestlambda
+(ridge.mod.betas = coef(cv.out, s=bestlambda))
+pred.ridge = predict(cv.out, s=bestlambda, newx=valid_reg)
+val.MSE.ridge = mean((pred.ridge - valid_nn$target)^2)
+val.MSE.ridge
+
+# Final step would be to re-calculate the model on ALL of the data.
+
+out=glmnet(train_reg,train_nn$target,alpha=0, lambda=bestlambda)
+ridge.coef = predict(out, type="coefficients")
+ridge.coef 
+
+######################################################################
+
+
+#' Next, let's try LASSO. Again, just optimize the parameter lambda through 
+#' Cross-Validation, seeing what provides the lowest MSE.
+#' To Run Lasso instead of ridge, simply change alpha to 1.
+
+
+#' From here, we can grab the best lambda and check the model on our test data.
+
+
+bestlambda=cv.out$lambda.min
+(lasso.mod.betas = coef(cv.out, s=bestlambda))
+pred.lasso = predict(cv.out, s=bestlambda, newx=train_reg)
+(val.MSE.lasso = mean((pred.lasso-train_nn$target)^2))
+
+#' Results comparable to the other methods. If we want to go with this method,
+#' we'd just update the coefficients (by running the entire optimization again)
+#' on the entire dataset.
+
+out=glmnet(train_reg,train_nn$target,alpha=1,lambda=bestlambda)
+lasso.coef=predict(out, type="coefficients")
+lasso.coef
+
+#' Notice the sparsity in the parameter estimates - this is the benefit of LASSO over 
+#' Ridge Regression.
+
+# Last thing to try if time permits is the ELASTIC NET
+bestlambda=cv.out$lambda.min
+(elastic.mod.betas = coef(cv.out, s=bestlambda))
+pred.elastic = predict(cv.out, s=bestlambda, newx=train_reg)
+(val.MSE.elastic = mean((pred.elastic-train_nn$target)^2))
+
+################################################################################
