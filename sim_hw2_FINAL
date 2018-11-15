@@ -162,6 +162,7 @@ for (i in 1:n){
     
     endRate <- (1-declineRate[1]) * begRate
     oilProd[k] <- 365 * (begRate + endRate) / 2
+    begRate <- endRate
   }
   
   for (k in 1:yrs){
@@ -189,4 +190,5 @@ for (i in 1:n){
 
 hist(NPVwet, breaks=100, main='2019: Simulated Net Present Value for 15-Year Wet Well', xlab='Net Present Value ($)')
 
-#median(NPVwet) = $49,396,410
+#median(NPVwet) = $12,329,881
+
