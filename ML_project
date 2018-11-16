@@ -1,21 +1,35 @@
 x = read.csv('MLProjectData.csv', header = TRUE)
 test = read.csv('testData.csv', header= TRUE)
+
+
+
 ######dealing with data#################
 ###dummy variables for categorical#####
 train = dummy_cols(x, select_columns = c("cat1","cat2"), remove_first_dummy = FALSE,
                    remove_most_frequent_dummy = FALSE)
-#train$cat1 = as.numeric(train$cat1)
-#train$cat2 = as.numeric(train$cat2)
+
+#drop old dummys
+train$cat1 = NULL
+train$cat2 = NULL
+cols <- sapply(train, is.logical)
+train[,cols] <- lapply(train[,cols], as.numeric)
+
+
+
+
+
 ####make logical variables binary#####
 ix <- 62:86 
 train[ix] <- lapply(train[ix], as.numeric) 
 #x = read.csv('MLProjectData.csv', header = TRUE)
 head(train)
-####80/20 split into train and validation####
-set.seed(123)
-TrainInd = sample(c(T,F),size=1030, replace=T,prob=c(0.8,0.2))
-train=train[TrainInd,]
-valid=train[!TrainInd,]
+####75/25 split into train and validation####
+#set.seed(123)
+# = sample(c(T,F),size=1:n, replace=T,prob=c(0.8,0.2))
+row_count <- nrow(train)
+shuffled_rows <- sample(row_count)
+train <- train[head(shuffled_rows,floor(row_count*0.75)),]
+test <- train[tail(shuffled_rows,floor(row_count*0.25)),]
 
 ####BASELINE- SLR####
 model = lm(target~., data = train)
@@ -144,21 +158,9 @@ scaleRange = function(x) {
 }
 
 train_nn = train
-#temp_norm = as.data.frame(lapply(x, scaleRange))\
-train_nn$cat1 = NULL
-train_nn$cat2 = NULL
-train_nn = as.numeric(train_nn)
-valid_nn = valid
-#temp_norm = as.data.frame(lapply(x, scaleRange))\
-valid_nn$cat1 = NULL
-valid_nn$cat2 = NULL
-valid_nn = as.numeric(valid_nn)
 
-
-
-x = scaleRange(train_nn)
-train_norm=x[TrainInd, ]
-valid_norm=x[!TrainInd, ]
+train_norm = scaleRange(train)
+valid_norm=scaleRange(valid)
 
 #Let’s get started with something simple, a neural network with only one hidden unit, and see how it
 # performs compared to the linear regression. You can then plot the resulting network structure with the
@@ -174,51 +176,30 @@ nnet1 = neuralnet(f, data=train_norm, hidden=2)
 #but also the computed value at each neuron (in the $neurons component). We’ll only want to retrieve the
 #former. We’ll use the predicted values to calculate a validation R
 # 2 as well as a MAPE.
-mat_valid = as.matrix(valid_norm)
-results1 = neuralnet::compute(nnet1, valid_norm[1:85])
+
+results1 = neuralnet::compute(nnet1, valid_norm[,1:100])
 nnet1Pred=results1$net.result
 nnet1Rsq = cor(nnet1Pred,valid_norm$target)
 nnet1MAPE = mean((nnet1Pred-valid_norm$target)/valid_norm$target)
 cat("1 Hidden Unit R-squared:", nnet1Rsq)
 cat("1 Hidden Unit MAPE:", nnet1MAPE)
-MAE_nnet = sum(abs(nnetPred1 - train_norm$target))/length(nnetPred1)
+MAE_nnet = sum(abs(results1$net.result - valid_norm$target))/length(valid_norm$target)
 
 
-# trength. If those minimum strength observations
 #are in our validation data, the MAPE will be undefined. To rescale our predictions to the original measure
 #of strength, we need to multiply them by the range of the original variables and add in the minimum
 #value. We will then recompute both the R
 
 #(which shouldn’t change since we’re only taking a linear
 #transformation of our predictions) and the MAPE for the neural network model.
-nnet1PredRescale = nnet1Pred*(max(train_norm$target)-min(train_norm$target))+min(train_norm$target)
+nnet1PredRescale = nnet1Pred*(max(valid_norm$target)-min(valid_norm$target))+min(valid_norm$target)
 nnet1Rsq = cor(nnet1PredRescale,valid_norm$target)
 nnet1MAPE = mean((nnet1PredRescale-valid_norm$target)/valid_norm$target)
 #nnet1MAE = sum(abs(nnet1PredRescale-train_norm$target))/length(train_norm$target)
 cat("1 Hidden Unit R-squared after Rescaling:", nnet1Rsq)
-
 cat("1 Hidden Unit MAPE after Rescaling:", nnet1MAPE)
 
-#Our MAPE is starting to look like something we might have more confidence in! This was an very
-#simple neural network model (a good place to start) so let’s see how we do if we increase the number of
-#hidden units first to 3 and then to 5:
-nnet3 = neuralnet(f, data=train_norm, hidden=3)
-nnet5 = neuralnet(f, data=train_norm, hidden=5)
-results3 = compute(nnet3, valid_norm[,1:85])
-nnet3PredRescale = results3$net.result*(max(train_norm$target)-min(train_norm$target))+min(train_norm$target)
-nnet3Rsq = cor(nnet3PredRescale,valid_norm$target)
-nnet3MAPE = mean((nnet3PredRescale-valid_norm$target)/train_norm$target)
-cat("3 Hidden Unit R-squared after Rescaling:", nnet3Rsq)
 
-cat("3 Hidden Unit MAPE after Rescaling:", nnet3MAPE)
-
-results5 = compute(nnet5, valid_norm[,1:85])
-nnet5PredRescale = results5$net.result*(max(train_norm$target)-min(train_norm$target))+min(train_norm$target)
-nnet5Rsq = cor(nnet5PredRescale,valid_norm$target)
-nnet5MAPE = mean((nnet5PredRescale-valid_norm$target)/valid_norm$target)
-cat("5 Hidden Unit R-squared after Rescaling:", nnet5Rsq)
-
-cat("5 Hidden Unit MAPE after Rescaling:", nnet5MAPE)
 ######################################################################
 ######################################################################
 ######################################################################
@@ -240,9 +221,9 @@ grid = 10^seq(10,-2,length=100) #' values for lambda you want to try. You can
 #' also let the cv.glmnet() function decide on
 #' an appropriate interval to test simply by
 #' omitting the lambda= option.
-train_reg=as.matrix(train_nn)
-valid_reg = as.matrix(valid_nn)
-cv.out = cv.glmnet(train_reg, train_nn$target, alpha=0, lambda=grid) #' Only using training data
+train_reg=as.matrix(train)
+valid_reg = as.matrix(valid)
+cv.out = cv.glmnet(train_reg, train$target, alpha=0, lambda=grid) #' Only using training data
 #' for CV!
 plot(cv.out)
 
@@ -253,18 +234,16 @@ bestlambda=cv.out$lambda.min
 bestlambda
 (ridge.mod.betas = coef(cv.out, s=bestlambda))
 pred.ridge = predict(cv.out, s=bestlambda, newx=valid_reg)
-val.MSE.ridge = mean((pred.ridge - valid_nn$target)^2)
+val.MSE.ridge = mean((pred.ridge - valid$target)^2)
 val.MSE.ridge
 
 # Final step would be to re-calculate the model on ALL of the data.
 
-out=glmnet(train_reg,train_nn$target,alpha=0, lambda=bestlambda)
+out=glmnet(train_reg,train$target,alpha=0, lambda=bestlambda)
 ridge.coef = predict(out, type="coefficients")
 ridge.coef 
 
 ######################################################################
-
-
 #' Next, let's try LASSO. Again, just optimize the parameter lambda through 
 #' Cross-Validation, seeing what provides the lowest MSE.
 #' To Run Lasso instead of ridge, simply change alpha to 1.
@@ -276,13 +255,13 @@ ridge.coef
 bestlambda=cv.out$lambda.min
 (lasso.mod.betas = coef(cv.out, s=bestlambda))
 pred.lasso = predict(cv.out, s=bestlambda, newx=train_reg)
-(val.MSE.lasso = mean((pred.lasso-train_nn$target)^2))
+(val.MSE.lasso = mean((pred.lasso-train$target)^2))
 
 #' Results comparable to the other methods. If we want to go with this method,
 #' we'd just update the coefficients (by running the entire optimization again)
 #' on the entire dataset.
 
-out=glmnet(train_reg,train_nn$target,alpha=1,lambda=bestlambda)
+out=glmnet(train_reg,train$target,alpha=1,lambda=bestlambda)
 lasso.coef=predict(out, type="coefficients")
 lasso.coef
 
@@ -293,6 +272,6 @@ lasso.coef
 bestlambda=cv.out$lambda.min
 (elastic.mod.betas = coef(cv.out, s=bestlambda))
 pred.elastic = predict(cv.out, s=bestlambda, newx=train_reg)
-(val.MSE.elastic = mean((pred.elastic-train_nn$target)^2))
+(val.MSE.elastic = mean((pred.elastic-train$target)^2))
 
 ################################################################################
