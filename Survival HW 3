@@ -1,0 +1,119 @@
+# need these packages
+library(survival)
+library(survminer)
+library(flexsurv)
+library(dplyr)
+library(visreg)
+
+
+#import data
+katrina<-read.csv('C:\\Users\\escha\\OneDrive\\Documents\\MSA\\Fall Classes\\Survival Analysis\\Data\\katrina.csv', header = TRUE)
+
+View(katrina)
+
+#checking distributions
+#--weibull
+fit_wb <- flexsurvreg(Surv(hour, reason ==1 ) ~ backup+bridgecrane+servo+trashrack+elevation+slope+age, 
+                      data = katrina, dist = "weibull")
+# plot looks good 
+plot(fit_wb, type = "cumhaz", ci = TRUE, conf.int = FALSE, las = 1, bty = "n",
+     xlab = "Hour", ylab = "cumulative hazard", main = "weibull distribution")
+
+
+#--exponential
+fit_exp<-flexsurvreg(Surv(hour, reason ==1 ) ~ backup+ bridgecrane+servo+trashrack+elevation+slope+age, 
+                     data = katrina, dist = "exponential")
+
+#plot doesnt look good 
+plot(fit_exp, type = "cumhaz", ci = TRUE, conf.int = FALSE, las = 1, bty = "n", 
+     xlab = "week", ylab = "cumulative hazard",
+     main = "exponential distribution")
+
+
+#--lognormal 
+fit_lnorm<-flexsurvreg(Surv(hour, reason ==1 ) ~ backup+ bridgecrane+servo+trashrack+elevation+slope+age, 
+                       data = katrina, dist = "lognorm")
+
+#plot looks good 
+plot(fit_lnorm, type = "cumhaz", ci = TRUE, conf.int = FALSE, las = 1, bty = "n", 
+     xlab = "week", ylab = "cumulative hazard",
+     main = "lognorm distribution")
+
+
+#--log-logistic
+fit_llogit<-flexsurvreg(Surv(hour, reason ==1 ) ~ backup+ bridgecrane+servo+trashrack+elevation+slope+age, 
+                        data = katrina, dist = "llogis")
+
+#plot doesnt look good 
+plot(fit_llogit, type = "cumhaz", ci = TRUE, conf.int = FALSE, las = 1, bty = "n", 
+     xlab = "week", ylab = "cumulative hazard",
+     main = "log-logistic distribution")
+
+#---------based on the distribution selection, weibull is the best for this case
+#now lets check the summary from the model to determine 
+
+# Fitting the AFT model with all variables
+fitAFT <- survreg(Surv(time = hour, event = reason %in% c(2,3)) ~ backup+ bridgecrane + servo + trashrack + elevation + slope + age, 
+               data = katrina, dist = "weibull") 
+summary(fitAFT)
+
+# Fitting the Cox model with all variables
+fitCOX <- coxph(Surv(time = hour, event = reason %in% c(2,3)) ~ backup+ bridgecrane + servo + trashrack + elevation + slope + age,
+              data = katrina)
+summary(fitCOX)
+
+# Shrinkage factor and comparing predicted risks AFT model
+df_model <- length(fitAFT$coefficients) # number of coefficients in model
+LR_model <- 2*diff(fitAFT$loglik) # LRT statistic from model
+(v_full <- 1 - (df_model/LR_model)) # estimate shrinkage factor
+eta_shrunk <- v_full*predict(fitAFT, newdata = katrina, type = "lp")
+
+# Looking for spread in peaks
+hist(eta_shrunk)
+
+# Shrinkage factor and comparing predicted risks Cox model
+df_model <- length(fitCOX$coefficients) # number of coefficients in model
+LR_model <- 2*diff(fitCOX$loglik) # LRT statistic from model
+(v_full <- 1 - (df_model/LR_model)) # estimate shrinkage factor
+eta_shrunk <- v_full*predict(fitCOX, newdata = katrina, type = "lp")
+
+# Looking for spread in peaks
+hist(eta_shrunk)
+
+# Comparing event, time, residuals
+resids <- data.frame(event = fitCOX$y[,dim(fitCOX$y)[2]],
+                     time = fitCOX$y[,dim(fitCOX$y)[2] - 1],
+                     res_m = residuals(fitCOX, type = "martingale"),
+                     res_d = residuals(fitCOX, type = "deviance"),
+                     ID = 1:length(residuals(fitCOX)))
+# martingale vs. time
+ggplot(resids, aes(x = time, y = res_m, color = factor(event))) +
+  geom_point() +
+  labs(x = "week", y = "martingale residuals", color = "event") +
+  scale_color_manual(values = c("purple", "orange"))
+# deviance vs. time
+ggplot(resids, aes(x = time, y = res_d, color = factor(event))) +
+  geom_point() +
+  labs(x = "week", y = "deviance residuals", color = "event") +
+  scale_color_manual(values = c("purple", "orange"))
+
+# Checking independence from time
+# Backup
+fit_strat <- coxph(Surv(time = hour, event = reason %in% c(2,3)) ~ strata(backup)+ bridgecrane + servo + trashrack + elevation + slope + age,
+                   data = katrina)
+ggsurvplot(survfit(fit_strat), data = katrina, fun = "cloglog")
+
+# Bridgecrane
+fit_strat <- coxph(Surv(time = hour, event = reason %in% c(2,3)) ~ backup+ strata(bridgecrane) + servo + trashrack + elevation + slope + age,
+                   data = katrina)
+ggsurvplot(survfit(fit_strat), data = katrina, fun = "cloglog")
+
+# Servo
+fit_strat <- coxph(Surv(time = hour, event = reason %in% c(2,3)) ~ backup+ bridgecrane + strata(servo) + trashrack + elevation + slope + age,
+                   data = katrina)
+ggsurvplot(survfit(fit_strat), data = katrina, fun = "cloglog")
+
+# Trashrack
+fit_strat <- coxph(Surv(time = hour, event = reason %in% c(2,3)) ~ backup+ bridgecrane + servo + strata(trashrack) + elevation + slope + age,
+                   data = katrina)
+ggsurvplot(survfit(fit_strat), data = katrina, fun = "cloglog")
