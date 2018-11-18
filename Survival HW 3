@@ -45,7 +45,7 @@ LR_model <- 2*diff(fitAFT$loglik) # LRT statistic from model
 eta_shrunkAFT <- v_full*predict(fitAFT, newdata = katrina, type = "lp")
 
 # Looking for spread in peaks
-hist(eta_shrunkAFT)
+hist(eta_shrunkAFT,breaks = 50)
 
 # Shrinkage factor and comparing predicted risks Cox model
 df_model <- length(fitCOX$coefficients) # number of coefficients in model
@@ -54,7 +54,7 @@ LR_model <- 2*diff(fitCOX$loglik) # LRT statistic from model
 eta_shrunkCOX <- v_full*predict(fitCOX, newdata = katrina, type = "lp")
 
 # Looking for spread in peaks
-hist(eta_shrunkCOX)
+hist(eta_shrunkCOX,breaks = 50)
 
 # Comparing event, time, residuals
 resids <- data.frame(event = fitCOX$y[,dim(fitCOX$y)[2]],
