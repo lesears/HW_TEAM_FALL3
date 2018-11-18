@@ -1,0 +1,111 @@
+katrina$hour[1]
+
+#if reason ==2
+#if hour >=12
+
+
+katrina$cat("h",katrina$hour[i],sep='')
+cat("h",katrina$hour[i]-1,sep = '')
+cat("h",katrina$hour[i]-2,sep = '')
+cat("h",katrina$hour[i]-3,sep = '')
+cat("h",katrina$hour[i]-4,sep = '')
+cat("h",katrina$hour[i]-5,sep = '')
+cat("h",katrina$hour[i]-6,sep = '')
+cat("h",katrina$hour[i]-7,sep = '')
+cat("h",katrina$hour[i]-8,sep = '')
+cat("h",katrina$hour[i]-9,sep = '')
+cat("h",katrina$hour[i]-10,sep = '')
+cat("h",katrina$hour[i]-11,sep = '')
+cat("h",katrina$hour[i]-12,sep = '')
+
+#currenttime <- c("h1","h2")
+r1 <- cat("h",katrina$hour[1],sep='')
+
+katrina$currenttime
+katrina$h48
+
+
+h = hour -1
+
+katrina_2[is.na(katrina_2)] <- 0
+
+if (katrina$reason == 2 && katrina$hour >= 12) {
+  for (j in 1:nrow(katrina))
+}
+else katrina$flag = 0
+katrina_2$a = rep(0,nrow(katrina_2))
+katrina_2$a = 0
+for (j in 1:nrow(katrina_2)){
+  h = katrina_2[j,"hour"]
+  #katrina_2$a[j] = 0
+  if (h >= 12) {
+    for (i in 1:12){
+      if (katrina_2[j,h-i+9] == 0){
+        katrina_2$a[j] = katrina_2$a[j] + 1
+        if (a == 12) {
+          katrina$flag[j]=1}
+          
+      else {
+        katrina$flag[j]=0
+    
+          }}
+  else {
+    katrina$flag[j]=0
+  }
+}
+    
+      
+      
+      
+      
+      }
+        if (a == 12) {
+          katrina$flag[j]=1
+    }
+  }
+  else {
+  katrina$flag[j]=0
+  }
+}
+
+katrina_2$start = rep(0,nrow(katrina_2))
+katrina_2$stop = katrina_2$hour 
+katrina_2$flag = rep(0,nrow(katrina_2))
+for (j in 1:nrow(katrina)){
+  h = katrina[j,"hour"]
+  if (h>=12){
+    runs = rle(j,)
+    
+  }
+
+
+
+
+
+
+
+
+
+
+katrina_2_test= as.vector(katrina_2_test)
+
+
+katrina_2 = katrina[katrina$reason == 2 & katrina$hour >= 12 ,]
+katrina_2$a =  rep(1,nrow(katrina_2))
+for (j in 1:nrow(katrina_2)){
+  y = rle(c(0,0,0,0,0,0,0,0,0,0,0,0))
+  y$lengths[katrina_2$survive==0]
+ 
+    
+    
+    
+    
+  }
+  
+  
+  
+  
+  
+}
+
+
