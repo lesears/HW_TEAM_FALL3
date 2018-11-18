@@ -15,42 +15,8 @@ View(katrina)
 #--weibull
 fit_wb <- flexsurvreg(Surv(hour, reason ==1 ) ~ backup+bridgecrane+servo+trashrack+elevation+slope+age, 
                       data = katrina, dist = "weibull")
-# plot looks good 
-plot(fit_wb, type = "cumhaz", ci = TRUE, conf.int = FALSE, las = 1, bty = "n",
-     xlab = "Hour", ylab = "cumulative hazard", main = "weibull distribution")
-
-
-#--exponential
-fit_exp<-flexsurvreg(Surv(hour, reason ==1 ) ~ backup+ bridgecrane+servo+trashrack+elevation+slope+age, 
-                     data = katrina, dist = "exponential")
-
-#plot doesnt look good 
-plot(fit_exp, type = "cumhaz", ci = TRUE, conf.int = FALSE, las = 1, bty = "n", 
-     xlab = "week", ylab = "cumulative hazard",
-     main = "exponential distribution")
-
-
-#--lognormal 
-fit_lnorm<-flexsurvreg(Surv(hour, reason ==1 ) ~ backup+ bridgecrane+servo+trashrack+elevation+slope+age, 
-                       data = katrina, dist = "lognorm")
-
-#plot looks good 
-plot(fit_lnorm, type = "cumhaz", ci = TRUE, conf.int = FALSE, las = 1, bty = "n", 
-     xlab = "week", ylab = "cumulative hazard",
-     main = "lognorm distribution")
-
-
-#--log-logistic
-fit_llogit<-flexsurvreg(Surv(hour, reason ==1 ) ~ backup+ bridgecrane+servo+trashrack+elevation+slope+age, 
-                        data = katrina, dist = "llogis")
-
-#plot doesnt look good 
-plot(fit_llogit, type = "cumhaz", ci = TRUE, conf.int = FALSE, las = 1, bty = "n", 
-     xlab = "week", ylab = "cumulative hazard",
-     main = "log-logistic distribution")
 
 #---------based on the distribution selection, weibull is the best for this case
-#now lets check the summary from the model to determine 
 
 # Fitting the AFT model with all variables
 fitAFT <- survreg(Surv(time = hour, event = reason %in% c(2,3)) ~ backup+ bridgecrane + servo + trashrack + elevation + slope + age, 
@@ -62,23 +28,33 @@ fitCOX <- coxph(Surv(time = hour, event = reason %in% c(2,3)) ~ backup+ bridgecr
               data = katrina)
 summary(fitCOX)
 
+############ Model Selection ###############
+
+# Comparing models using AIC & LRT
+
+AIC(fitCOX)
+AIC(fitAFT)
+
+lrtAFT <- 2*diff(fitAFT$loglik)
+lrtCOX <- 2*diff(fitCOX$loglik)
+
 # Shrinkage factor and comparing predicted risks AFT model
 df_model <- length(fitAFT$coefficients) # number of coefficients in model
 LR_model <- 2*diff(fitAFT$loglik) # LRT statistic from model
 (v_full <- 1 - (df_model/LR_model)) # estimate shrinkage factor
-eta_shrunk <- v_full*predict(fitAFT, newdata = katrina, type = "lp")
+eta_shrunkAFT <- v_full*predict(fitAFT, newdata = katrina, type = "lp")
 
 # Looking for spread in peaks
-hist(eta_shrunk)
+hist(eta_shrunkAFT)
 
 # Shrinkage factor and comparing predicted risks Cox model
 df_model <- length(fitCOX$coefficients) # number of coefficients in model
 LR_model <- 2*diff(fitCOX$loglik) # LRT statistic from model
 (v_full <- 1 - (df_model/LR_model)) # estimate shrinkage factor
-eta_shrunk <- v_full*predict(fitCOX, newdata = katrina, type = "lp")
+eta_shrunkCOX <- v_full*predict(fitCOX, newdata = katrina, type = "lp")
 
 # Looking for spread in peaks
-hist(eta_shrunk)
+hist(eta_shrunkCOX)
 
 # Comparing event, time, residuals
 resids <- data.frame(event = fitCOX$y[,dim(fitCOX$y)[2]],
@@ -96,6 +72,8 @@ ggplot(resids, aes(x = time, y = res_d, color = factor(event))) +
   geom_point() +
   labs(x = "week", y = "deviance residuals", color = "event") +
   scale_color_manual(values = c("purple", "orange"))
+
+############## Time Independence Assumptions ##############
 
 # Checking independence from time
 # Backup
@@ -117,3 +95,41 @@ ggsurvplot(survfit(fit_strat), data = katrina, fun = "cloglog")
 fit_strat <- coxph(Surv(time = hour, event = reason %in% c(2,3)) ~ backup+ bridgecrane + servo + strata(trashrack) + elevation + slope + age,
                    data = katrina)
 ggsurvplot(survfit(fit_strat), data = katrina, fun = "cloglog")
+
+################### Motor Running 12 consecutive hours ################
+
+# Adding 12-hour motor variable
+katrina$a = rep(0,nrow(katrina))
+katrina$flag = rep(0,nrow(katrina))
+katrina[is.na(katrina)] <- 0
+
+for (j in 1:nrow(katrina)){
+  h = katrina[j,"hour"]
+  if (h>12){
+    for (i in 1:12){
+      if (katrina[j,h-i+9]==1){
+        katrina$a[j] = katrina$a[j] + 1
+      }
+    }
+  }
+}
+
+katrina$flag[(katrina$reason != 0) & (katrina$a == 12)] <- 1
+
+
+# Fitting the AFT model with new flag
+fitAFTnew <- survreg(Surv(time = hour, event = reason %in% c(2,3)) ~ backup+ bridgecrane + servo + trashrack + elevation + slope + age + flag, 
+                  data = katrina, dist = "weibull") 
+summary(fitAFTnew)
+
+# Fitting the Cox model with new flag
+fitCOXnew <- coxph(Surv(time = hour, event = reason %in% c(2,3)) ~ backup+ bridgecrane + servo + trashrack + elevation + slope + age + flag,
+                data = katrina)
+summary(fitCOXnew)
+
+AIC(fitAFTnew)
+AIC(fitAFT)
+AIC(fitCOXnew)
+AIC(fitCOX)
+
+anova(fitCOXnew,fitCOX,test = "LRT")
