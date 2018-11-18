@@ -1,0 +1,93 @@
+library(readr)
+library(splines)
+library(glmnet)
+library(leaps)
+library(factoextra)
+library(dplyr)
+
+setwd('C:\\Users\\turne\\OneDrive\\Documents\\Fall 3\\Clustering\\Final')
+load("final_data.Rdata")
+
+################### code from Moodle
+
+times <- seq(1,295)/100 # Observations in 1/100th of a second
+X <- bs(times,intercept=TRUE,df=60) #create a spline to 
+
+#model the data
+
+betas <- matrix(0,ncol=60,nrow = 6792)
+
+###########################################################
+# run a linear regression on each data set
+# here I am manipulating my data you I can cluster
+###########################################################
+
+for (ii in 1:6792){
+  temp <- lm(as.numeric(final_data[ii,6:300])~X-1) #-1 removes the natural intercept
+  betas[ii,]  <- coefficients(temp)
+}
+
+cdata <- cbind(final_data[,1:5],betas)
+
+#CONVERT EVERTYING TO 'numbers'
+cdata$AGE <- as.numeric(cdata$AGE)
+cdata$EVER_SMOKE <- as.numeric(cdata$EVER_SMOKE)
+cdata$ASTHMA <- as.numeric(cdata$ASTHMA)
+cdata$POVERTY_RATIO <- as.numeric(cdata$POVERTY_RATIO)
+
+##################### CODE Stops
+############################################
+############################################
+############################################
+
+# a) First use principal component analysis to 
+
+pcafinal <- princomp(cdata[,2:65]) #which variables to look into
+pcafinal$loadings
+pcafinal$center
+pcafinal$scores[1,]
+
+pcafinal$sdev
+# 1: 45.2117509 , 2: 31.2901007, 3: 22.3753978, 4: 17.3299734, 5: 13.0471355
+
+
+set.seed(12345)
+# Plot this 
+fviz_nbclust(pcafinal$scores, kmeans, method = "wss",k.max=20) #4 clusters
+fviz_nbclust(pcafinal$scores, kmeans, method = "silhouette",k.max=20) #2 clusters
+
+###################################################################
+set.seed(12345)
+kmean_4 <- kmeans(pcafinal$scores,4)
+cdata$clust <- kmean_4$cluster
+
+# Try to understand the clusters
+###################################################################
+#
+clusters <- list()
+for( ii in 1:4){
+  clusters[[ii]] <- cdata %>% filter(clust == ii)
+}
+
+# Find the means of each cluster to "Name them"
+x <- cbind(colMeans(cdata))
+y <- x
+for (ii in 1:4) {
+  x <- cbind(x,colMeans(clusters[[ii]])-y)
+}
+x
+
+#view X to determine good names:
+#cluster 1= lowest seqn, oldest, most smokers, least asthma, least poverty
+#cluster 2= extremely high seqn, slighly older, slightly lower poverty ratio
+#cluster 3= very high seqn, slightly younger, slightly higher poverty ratio
+#cluster 4= youngest, above average smokers, below average asthma, and highest poverty ratio
+
+kmean_4$centers
+
+plot(kmean_4$centers[,3],ylab="asd",xlab = "asd",
+     axes=F,xlim=c(-150,150),ylim=c(-150,150),pch = 16,col="Light Blue",cex=2)
+abline(v=0,lty=2)
+abline(h=0,lty=2)
+
+
