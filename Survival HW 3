@@ -128,18 +128,24 @@ fitCOXnew <- coxph(Surv(time = hour, event = reason %in% c(2,3)) ~ backup+ bridg
                 data = katrina)
 summary(fitCOXnew)
 
+fitCOXnew2 <- coxph(Surv(time = hour, event = reason %in% c(2,3)) ~ trashrack + slope + flag,
+                   data = katrina)
+
 AIC(fitAFTnew)
 AIC(fitAFT)
 AIC(fitCOXnew)
 AIC(fitCOX)
 
 # Likelihood Ratios for nested models
-anova(fitCOXnew,fitCOX,test = "LRT")
+anova(fitCOXnew,fitCOXnew2,test = "LRT")
 
-fitAFT$loglik
-fitAFTnew$loglik
-2*(1096.633-1063.393)
 
-fitCOX$loglik
-fitCOXnew$loglik
-2*(1325.015-1277.513)
+
+########## LRT TEST #############
+fitCOXnew <- coxph(Surv(time = hour, event = reason %in% c(2,3)) ~ backup+ bridgecrane + servo + trashrack + elevation + slope + age + flag,
+                   data = katrina)
+
+fitCOXnew2 <- coxph(Surv(time = hour, event = reason %in% c(2,3)) ~ trashrack + slope + flag,
+                    data = katrina)
+
+anova(fitCOXnew,fitCOXnew2,test = "LRT")
