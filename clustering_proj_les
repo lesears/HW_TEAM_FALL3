@@ -85,12 +85,12 @@ x
 #cluster 3= very high seqn, slightly younger, slightly higher poverty ratio
 #cluster 4= youngest, above average smokers, below average asthma, and highest poverty ratio
 
-kmean_4$centers
+#kmean_4$centers
 
-plot(kmean_4$centers[,3],ylab="asd",xlab = "asd",
-     axes=F,xlim=c(-150,150),ylim=c(-150,150),pch = 16,col="Light Blue",cex=2)
-abline(v=0,lty=2)
-abline(h=0,lty=2)
+#plot(kmean_4$centers[,3],ylab="asd",xlab = "asd",
+    # axes=F,xlim=c(-150,150),ylim=c(-150,150),pch = 16,col="Light Blue",cex=2)
+#abline(v=0,lty=2)
+#abline(h=0,lty=2)
 
 bet <- betas[nalist == 0,]
 
@@ -111,3 +111,41 @@ lines(times,X%*%bl3,lwd=2,col=3)
 cl4 <- matrix(k_means4$centers[4,],60,1)
 bl4 <- cl4 * stdev + cmeans
 lines(times,X%*%bl4,lwd=2,col=4)
+
+
+
+##################################PART 2################################
+set.seed(12345)
+
+library(mclust)
+clustBIC <-mclustBIC(cdata[,10:20], modelNames ='VVV', G=1:20)   # This is model selection
+plot(clustBIC)
+
+mod1<-mclustBIC(cdata[,10:20], modelNames ='VVV', G=6)
+summary(mod1)
+mclustF = Mclust(cdata[,10:20], x = mod1)
+#summary(mod1_apply, parameters = TRUE)
+
+
+d <- seq(0,1,0.01)
+b <- mclustF$parameters$mean[,1]
+p1 <- 1/(1+exp(-b[1]-b[2]*d))
+b <- mclustF$parameters$mean[,2]
+p2 <- 1/(1+exp(-b[1]-b[2]*d))
+b <- mclustF$parameters$mean[,3]
+p3 <- 1/(1+exp(-b[1]-b[2]*d))
+b <- mclustF$parameters$mean[,4]
+p4 <- 1/(1+exp(-b[1]-b[2]*d))
+b <- mclustF$parameters$mean[,5]
+p5 <- 1/(1+exp(-b[1]-b[2]*d))
+b <- mclustF$parameters$mean[,6]
+p6 <- 1/(1+exp(-b[1]-b[2]*d))
+
+
+plot(d,p1,xlab="lung capacity",ylab="Probability",type='l',col = 1,lwd=2,ylim=c(0,1))
+lines(d,p2,col=2,lwd=2)
+lines(d,p3,col=3,lwd=2)
+lines(d,p4,col=4,lwd=2)
+lines(d,p5,col=5,lwd=2)
+lines(d,p6,col=6,lwd=2)
+mclustF$parameters$mean[1,]
