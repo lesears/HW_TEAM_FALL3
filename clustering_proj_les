@@ -1,0 +1,113 @@
+#BEFORE EACH Mclust COMMAND  kmeans COMMAND or mclustBIC COMMAND use 
+#THE 'set.seed(12345)' COMMAND to get the same answer as me. 
+
+load('final_data.Rdata')
+
+library(readr)
+library(splines)
+library(glmnet)
+library(leaps)
+library(factoextra)
+library(dplyr)
+
+################### code from Moodle
+
+times <- seq(1,295)/100 # Observations in 1/100th of a second
+X <- bs(times,intercept=TRUE,df=60) #create a spline to 
+
+#model the data
+
+betas <- matrix(0,ncol=60,nrow = 6792)
+
+###########################################################
+# run a linear regression on each data set
+# here I am manipulating my data you I can cluster
+
+###########################################################
+nalist <- rep(0,10000)
+for (ii in 1:6792){
+  temp <- lm(as.numeric(final_data[ii,6:300])~X-1) #-1 removes the natural intercept
+  betas[ii,]  <- coefficients(temp)
+  nalist[ii] <- sum(is.na(betas[ii,]))
+}
+
+cdata <- cbind(final_data[,1:5],betas)
+
+#CONVERT EVERTYING TO 'numbers'
+cdata$AGE <- as.numeric(cdata$AGE)
+cdata$EVER_SMOKE <- as.numeric(cdata$EVER_SMOKE)
+cdata$ASTHMA <- as.numeric(cdata$ASTHMA)
+cdata$POVERTY_RATIO <- as.numeric(cdata$POVERTY_RATIO)
+
+##################### CODE Stops
+############################################
+############################################
+############################################
+
+# a) First use principal component analysis to 
+
+pcafinal <- princomp(cdata[,2:65]) #which variables to look into
+pcafinal$loadings
+pcafinal$center
+pcafinal$scores[1,]
+
+pcafinal$sdev
+# 1: 45.2117509 , 2: 31.2901007, 3: 22.3753978, 4: 17.3299734, 5: 13.0471355
+
+
+set.seed(12345)
+# Plot this 
+fviz_nbclust(pcafinal$scores, kmeans, method = "wss",k.max=20) #4 clusters
+fviz_nbclust(pcafinal$scores, kmeans, method = "silhouette",k.max=20) #2 clusters
+
+###################################################################
+
+
+# Try to understand the clusters
+###################################################################
+#
+clusters <- list()
+for( ii in 1:4){
+  clusters[[ii]] <- cdata %>% filter(clust == ii)
+}
+
+# Find the means of each cluster to "Name them"
+x <- cbind(colMeans(cdata))
+y <- x
+for (ii in 1:4) {
+  x <- cbind(x,colMeans(clusters[[ii]])-y)
+}
+x
+
+#view X to determine good names:
+#cluster 1= lowest seqn, oldest, most smokers, least asthma, least poverty
+#cluster 2= extremely high seqn, slighly older, slightly lower poverty ratio
+#cluster 3= very high seqn, slightly younger, slightly higher poverty ratio
+#cluster 4= youngest, above average smokers, below average asthma, and highest poverty ratio
+
+kmean_4$centers
+
+plot(kmean_4$centers[,3],ylab="asd",xlab = "asd",
+     axes=F,xlim=c(-150,150),ylim=c(-150,150),pch = 16,col="Light Blue",cex=2)
+abline(v=0,lty=2)
+abline(h=0,lty=2)
+
+bet <- betas[nalist == 0,]
+
+cmeans <- matrix(colMeans(betas),60,1)
+stdev  <- matrix(apply(betas,2,sd),60,1)
+
+k_means4 <- kmeans(scale(betas),4,nstart = 25)
+
+cl1 <- matrix(k_means4$centers[1,],60,1)
+bl1 <- cl1 * stdev + cmeans
+plot(times,X%*%bl1,ylab="ML",xlab = "Time",type = 'l',lwd=2,col=1,ylim=c(0,100))
+cl2 <- matrix(k_means4$centers[2,],60,1)
+bl2 <- cl2 * stdev + cmeans
+lines(times,X%*%bl2,lwd=2,col=2)
+cl3 <- matrix(k_means4$centers[3,],60,1)
+bl3 <- cl3 * stdev + cmeans
+lines(times,X%*%bl3,lwd=2,col=3)
+cl4 <- matrix(k_means4$centers[4,],60,1)
+bl4 <- cl4 * stdev + cmeans
+lines(times,X%*%bl4,lwd=2,col=4)
