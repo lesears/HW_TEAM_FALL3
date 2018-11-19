@@ -30,13 +30,14 @@ summary(fitCOX)
 
 ############ Model Selection ###############
 
-# Comparing models using AIC & LRT
+# Comparing models using AIC & LR
 
 AIC(fitCOX)
 AIC(fitAFT)
 
-lrtAFT <- 2*diff(fitAFT$loglik)
-lrtCOX <- 2*diff(fitCOX$loglik)
+lrAFT <- 2*diff(fitAFT$loglik)
+lrCOX <- 2*diff(fitCOX$loglik)
+
 
 # Shrinkage factor and comparing predicted risks AFT model
 df_model <- length(fitAFT$coefficients) # number of coefficients in model
@@ -132,4 +133,13 @@ AIC(fitAFT)
 AIC(fitCOXnew)
 AIC(fitCOX)
 
+# Likelihood Ratios for nested models
 anova(fitCOXnew,fitCOX,test = "LRT")
+
+fitAFT$loglik
+fitAFTnew$loglik
+2*(1096.633-1063.393)
+
+fitCOX$loglik
+fitCOXnew$loglik
+2*(1325.015-1277.513)
