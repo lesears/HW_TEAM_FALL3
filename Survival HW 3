@@ -56,7 +56,6 @@ plot(fit_llogit, type = "cumhaz", ci = TRUE, conf.int = FALSE, las = 1, bty = "n
 
 
 ################# ALL THE DISTRIBUTIONS ARE TERRIBLE - NOT USING AFT #################
-# Fitting the AFT model with all variables
 
 
 ################# MOVING ONTO COX REGRESSION MODEL #################
