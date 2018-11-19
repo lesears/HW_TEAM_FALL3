@@ -1,4 +1,4 @@
-################ SIM 2 WET WELL SIMULATION (since SAS was too hard)
+################ SIM PROJECT ####################
 
 # Load libraries
 library(dplyr)
@@ -9,6 +9,7 @@ library(EnvStats)
 library(ggplot2)
 library(triangle)
 library(truncnorm)
+library(scales)
 ################################ IMPORTING
 
 # Read Excel data
@@ -51,7 +52,7 @@ destandardize <- function(x.std, x){
 ################
 ################
 #####       
-n <- 10000
+n <- 100000
 yrs <- 15
 #####             
 ###############
@@ -88,7 +89,7 @@ for(i in 1:n){
   Drill2019[i] <- Drillt
 }
 
-
+############## FROM HW 3 ###############################################
 #-----------------------------------------------------------------------------------------
 # #since the structure and seal don't have any risk, does that mean Pseal=1 Pstructure=1?
 pseal<-1
@@ -118,7 +119,7 @@ phvalues<-c()
 
 k<-0
 
-#----------------------------------combine all of those into one loop to simulate 10000 times-------------------------
+#----------------------------------combine all of those into one loop to simulate -------------------------
 
 for(i in 1:n){
   #uniform distribution to simulate the count of wells 
@@ -234,11 +235,67 @@ for (i in 1:n){
   totalWetCost[i] <- NPVwet[i] * numwet[i]
 }
 
-####################################### PLOTTING THE AWESOMENESS
+####################################### Simulate the distribution of NPV from entire project
 total <- rep(0,n)
 
 for (i in 1:n){
 total[i] <- totalWetCost[i]+totalDryCost[i]
 }
 
-hist(total, breaks=25, main='2019: Total', xlab='Cost ($)')
+hist(total/1000000, breaks=25, main='2019: Total', xlab='Cost in Millions ($)')
+breaks = c(-200, 200, 400, 600, 800, 1000)
+axis(1,at=breaks, labels = paste("$", breaks, "M", sep = ""))
+
+##################################### Calculate the expected return from the scenario, as well as measures of risk
+##################################### –such as Value at Risk and Expected Shortfall.
+
+VaR.percentile <- 0.01
+VaR <- quantile(total, VaR.percentile, na.rm=TRUE)
+Var.label <- dollar(VaR)
+
+hist(total/1000, breaks=25, main='2019: Total', xlab='Cost in Thounsands ($)')
+breaks = c(-200000, 200000, 400000, 600000, 800000, 1000000)
+axis(1,at=breaks, labels = paste("$", breaks, "K", sep = ""))
+abline(v = VaR/1000, col="red", lwd=2)
+mtext(paste("Value at Risk", Var.label, sep=" = "), at=VaR/1000, col="red")
+
+ES <- mean(total[total < VaR], na.rm=TRUE)
+ES.label <- dollar(ES)
+
+# Confidence Intervals for Value at Risk & Expected Shortfall - Bootstrap Approach #
+n.bootstraps <- 10000
+sample.size <- 10000
+
+VaR.boot <- rep(0,n.bootstraps)
+ES.boot <- rep(0,n.bootstraps)
+for(i in 1:n.bootstraps){
+  bootstrap.sample <- sample(total, size=sample.size)
+  VaR.boot[i] <- quantile(bootstrap.sample, VaR.percentile, na.rm=TRUE)
+  ES.boot[i] <- mean(bootstrap.sample[bootstrap.sample < VaR.boot[i]], na.rm=TRUE)
+}
+
+VaR.boot.U <- quantile(VaR.boot, 0.975, na.rm=TRUE)
+VaR.boot.L <- quantile(VaR.boot, 0.025, na.rm=TRUE)
+dollar(VaR.boot.L)
+dollar(VaR)
+dollar(VaR.boot.U)
+
+hist(total/1000, breaks=25, main='2019: Total', xlab='Cost in Thousands ($)', col="lightblue")
+breaks = c(-200000, 200000, 400000, 600000, 800000, 1000000)
+axis(1, at = breaks, labels = paste("$", breaks, "K", sep = ""))
+abline(v = VaR/1000, col="red", lwd=2)
+mtext(paste("Value at Risk",Var.label, sep=" = "), at = VaR/1000, col="red")
+abline(v = VaR.boot.L/1000, col="blue", lwd=2, lty="dashed")
+abline(v = VaR.boot.U/1000, col="blue", lwd=2, lty="dashed")
+
+ES.boot.U <- quantile(ES.boot, 0.975, na.rm=TRUE)
+ES.boot.L <- quantile(ES.boot, 0.025, na.rm=TRUE)
+dollar(ES.boot.L)
+dollar(ES)
+dollar(ES.boot.U)
+
+##################################### Make a recommendation on whether the company should invest
+#####################################in the scenario described based on your above numbers
+
+
+
