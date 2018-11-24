@@ -1,0 +1,221 @@
+########################SET UP DATA########################
+
+#download necessary libraries
+library(fastDummies) #will use while dealing with dummy variables
+library(prediction) #will use to create a simple linear regression model
+
+# download and load in the ML Data
+x = read.csv('Z:/Desktop/Fall 3/ML/MLProjectData.csv', header = TRUE) #"train data"
+test = read.csv('Z:/Desktop/Fall 3/ML/testData.csv', header= TRUE)
+
+########################DEALING WITH DATA########################
+
+# dummy variables for categorical
+train = dummy_cols(x, select_columns = c("cat1","cat2"), remove_first_dummy = FALSE,
+                   remove_most_frequent_dummy = FALSE)
+
+# drop old dummies
+train$cat1 = NULL
+train$cat2 = NULL
+cols <- sapply(train, is.logical)
+train[,cols] <- lapply(train[,cols], as.numeric)
+
+# make logical variables binary
+# ask laney to explain this part!
+ix <- 62:86 
+train[ix] <- lapply(train[ix], as.numeric) 
+
+# x = read.csv('MLProjectData.csv', header = TRUE) #why would we do this again?
+head(train)
+
+####75/25 split into train and validation####
+# can i do this part?
+
+set.seed(123)
+row_count <- nrow(train)
+shuffled_rows <- sample(row_count)
+train <- train[head(shuffled_rows,floor(row_count*0.75)),]
+valid <- train[tail(shuffled_rows,floor(row_count*0.25)),]
+
+#so if we take a look at the valid dataset, there are TONS of NAs once we turn
+#valid into valid_norm above. didn't have this issue with train.
+#to take care of NA's, we're just gonna omit them.
+
+valid <- na.omit(valid) 
+
+######################## BASELINE ~ SLR ########################
+
+# before getting into machine learning exploration, we want to visually see our data
+# simple linear regression
+
+model = lm(target~., data = train)
+model2 = lm(target~num1+num8+num9+num13+num22+num38+num46+num48+num58+num59, data = train)
+summary(model) #THIS TELLS ME WHICH VARIABLES ARE SIGNIFICANT
+# for model: intercept num1 num8 num9 num13 num22 num38 num46 num48 num58 num59
+
+summary(model2)
+# what do i do about variables with NA
+# THINKING PROCESS: "model2" was created with significant variables identified in "model"
+# didn't really use "model" for anything but identifying significant variables.
+# now, we'll use the sig variables from "model" in "model2" to check the neural networks
+
+# predictions for just model(all variables used)
+predictions = predict(model,train)
+MAE_base= sum(abs(train$target-predictions)/length(train$target))
+#okay so this MAE is really high...0.9570
+
+
+# only signficant variables used
+predictions2 = predict(model2,train)
+MAE_base2= sum(abs(train$target-predictions2)/length(train$target))
+#this MAE is barely any different! 0.9544
+
+######################## NEURAL NETWORK EXPLORATION ########################
+#PACKAGE = NEURALNET
+library(neuralnet)
+attach(train) #what does this do
+library(tidyverse)
+
+############# apparently certain packages mask each other --> how do i work around this?
+
+# NOTE FOR ME : GO BACK + PLOT ALL VARIABLE RELATIONSHIPS + HISTOGRAMS
+# TO IDENTIFY PATTERNS
+
+hist(num1)  # right skewed
+hist(num8)  # right skewed
+hist(num9)  # right skewed
+hist(num13) # right skewed? not too sure
+hist(num22) # kinda normal / symmetric
+hist(num38) # left skewed
+hist(num46) # right skewed
+hist(num48) # a little right skewed
+hist(num58) # not normal but not quite skewed / symmetric
+hist(num59) # uniform
+
+# since all of the distributions do not have bell shaped distributions,
+# we'll use range standardization
+
+#
+scaleRange = function(x) {
+  + return((x-min(x))/(max(x)-min(x)))
+}
+
+##############################PINPOINTING THE ISSUE###############################
+train_norm = as.data.frame(lapply(train, scaleRange)) #has been range standardized
+valid_norm = as.data.frame(lapply(valid, scaleRange)) #has been range standardized
+
+#HELLO LANEY!! THIS CODE IS YOURS AND YIELDS V SMALL MAE VALUES. THE CODE ABOVE GIVES THE MAE VALUES FOR EACH NN
+#LISTED IN THEIR RESPECTIVE SECTIONS
+#train_norm = scaleRange(train)
+#valid_norm=scaleRange(valid)
+
+####################### NN WITH ONE HIDDEN LAYER ############################
+##################### NN1 TRAINING MAE: 0.042179 ########################
+# if we don't set a seed, the same code will give us really different answers every time
+set.seed(123)
+nn1_train = neuralnet(target~num1+num8+num9+num13+num22+num38+num46+num48+num58+num59, data=train_norm, hidden=1)
+plot(nn1_train)
+#DO A MAE FOR EACH LEVEL, train and tests?
+#error and stops: unable to see bc plot cuts off
+#associated weights using the plot() command.n <- names(train_)
+
+results1 = neuralnet::compute(nn1_train, train_norm[,1:10])
+# recreate nnet1 for validation dataset and then run this code w valid_norm
+nnet1Pred=results1$net.result
+nnet1Rsq = cor(nnet1Pred,train_norm$target)
+nnet1MAPE = mean((nnet1Pred-train_norm$target)/train_norm$target)
+cat("1 Hidden Unit R-squared:", nnet1Rsq)
+cat("1 Hidden Unit MAPE:", nnet1MAPE)
+MAE_nnet1_train = sum(abs(results1$net.result - train_norm$target))/length(train_norm$target)
+
+######################## VALIDATION ON NN1 #######################################
+
+nnet1PredRescale = nnet1Pred*(max(valid_norm$target)-min(valid_norm$target))+min(valid_norm$target)
+nnet1MAE_valid = sum(abs(nnet1PredRescale-valid_norm$target))/length(valid_norm$target)
+
+max(valid_norm$target)
+
+# nnet1Rsq = cor(nnet1PredRescale,valid_norm$target)
+nnet1MAPE = mean((nnet1PredRescale-valid_norm$target)/valid_norm$target)
+# cat("1 Hidden Unit R-squared after Rescaling:", nnet1Rsq)
+# cat("1 Hidden Unit MAPE after Rescaling:", nnet1MAPE)
+
+####################### NN WITH TWO HIDDEN LAYERS ############################
+##################### NN2 TRAINING MAE: 2.6047 ########################
+# So far, increasing the # of hidden layers seems to increase the error by a lot
+
+set.seed(123)
+nn2_train = neuralnet(target~num1+num8+num9+num13+num22+num38+num46+num48+num58+num59, data=train_norm, hidden=2)
+plot(nn2_train)
+#error and stops: unable to see bc plot cuts off
+
+
+results2 = neuralnet::compute(nn2_train, train_norm[,1:10])
+# recreate nnet1 for validation dataset and then run this code w valid_norm
+nnet2Pred=results2$net.result
+nnet2Rsq = cor(nnet2Pred,train_norm$target)
+nnet2MAPE = mean((nnet2Pred-train_norm$target)/train_norm$target)
+cat("2 Hidden Units R-squared:", nnet2Rsq)
+cat("2 Hidden Units MAPE:", nnet2MAPE)
+MAE_nnet2_train = sum(abs(results2$net.result - train_norm$target))/length(train_norm$target)
+
+
+####################### NN WITH THREE HIDDEN LAYERS ############################
+##################### NN3 TRAINING MAE: 0.95205 ########################
+# So far, increasing the # of hidden layers seems to inconsistently affect the MAE
+
+set.seed(123)
+nn3_train = neuralnet(target~num1+num8+num9+num13+num22+num38+num46+num48+num58+num59, data=train_norm, hidden=3)
+plot(nn3_train)
+#error and stops: unable to see bc plot cuts off
+
+results3 = neuralnet::compute(nn3_train, train_norm[,1:10])
+# recreate nnet1 for validation dataset and then run this code w valid_norm
+nnet3Pred=results3$net.result
+nnet3Rsq = cor(nnet3Pred,train_norm$target)
+nnet3MAPE = mean((nnet3Pred-train_norm$target)/train_norm$target)
+cat("3 Hidden Units R-squared:", nnet3Rsq)
+cat("3 Hidden Units MAPE:", nnet3MAPE)
+MAE_nnet3_train = sum(abs(results3$net.result - train_norm$target))/length(train_norm$target)
+
+####################### NN WITH FOUR HIDDEN LAYERS ############################
+##################### NN4 TRAINING MAE: 0.17239 ########################
+# So far, increasing the # of hidden layers seems to inconsistently affect the MAE
+# with 4 layers, the MAE has decreased from where it was at 3 layers
+# 1 layer still has the lowest MAE
+
+# if we don't set a seed, the same code will give us really different answers every time
+set.seed(123)
+nn4_train = neuralnet(target~num1+num8+num9+num13+num22+num38+num46+num48+num58+num59, data=train_norm, hidden=4)
+plot(nn4_train)
+#error and stops: unable to see bc plot cuts off
+
+results4 = neuralnet::compute(nn4_train, train_norm[,1:10])
+# recreate nnet1 for validation dataset and then run this code w valid_norm
+nnet4Pred=results4$net.result
+nnet4Rsq = cor(nnet4Pred,train_norm$target)
+nnet4MAPE = mean((nnet4Pred-train_norm$target)/train_norm$target)
+cat("4 Hidden Units R-squared:", nnet4Rsq)
+cat("4 Hidden Units MAPE:", nnet4MAPE)
+MAE_nnet4_train = sum(abs(results4$net.result - train_norm$target))/length(train_norm$target)
+
+####################### NN WITH FIVE HIDDEN LAYERS ############################
+##################### NN5 TRAINING MAE: 0.39753 ########################
+# So far, increasing the # of hidden layers seems to inconsistently affect the MAE
+# with 4 layers, the MAE had decreased from where it was at 3 layers
+# went back up 
+# 1 layer still has the lowest MAE; so now do validation on MAE 1
+
+set.seed(123)
+#have to add a stepmax to hopefully allow convergence
+nn5_train = neuralnet(target~num1+num8+num9+num13+num22+num38+num46+num48+num58+num59, data=train_norm, hidden=5, stepmax=1e6)
+plot(nn5_train)
+#error and stops: unable to see bc plot cuts off
+
+results5 = neuralnet::compute(nn5_train, train_norm[,1:10])
+nnet5Pred=results5$net.result
+nnet5Rsq = cor(nnet5Pred,train_norm$target)
+nnet5MAPE = mean((nnet5Pred-train_norm$target)/train_norm$target)
+cat("5 Hidden Units R-squared:", nnet5Rsq)
+cat("5 Hidden Units MAPE:", nnet5MAPE)
+MAE_nnet5_train = sum(abs(results5$net.result - train_norm$target))/length(train_norm$target)
