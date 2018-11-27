@@ -18,6 +18,8 @@ X <- bs(times,intercept=TRUE,df=60) #create a spline to
 #model the data
 
 betas <- matrix(0,ncol=60,nrow = 6792)
+times <- seq(1,295)/100
+
 
 ###########################################################
 # run a linear regression on each data set
@@ -91,8 +93,8 @@ x
     # axes=F,xlim=c(-150,150),ylim=c(-150,150),pch = 16,col="Light Blue",cex=2)
 #abline(v=0,lty=2)
 #abline(h=0,lty=2)
-
-bet <- betas[nalist == 0,]
+set.seed(12345)
+#bet <- betas[nalist == 0,]
 
 cmeans <- matrix(colMeans(betas),60,1)
 stdev  <- matrix(apply(betas,2,sd),60,1)
@@ -111,6 +113,25 @@ lines(times,X%*%bl3,lwd=2,col=3)
 cl4 <- matrix(k_means4$centers[4,],60,1)
 bl4 <- cl4 * stdev + cmeans
 lines(times,X%*%bl4,lwd=2,col=4)
+
+times <- seq(1,295)/100
+#plot(times,X%*%beta1,ylim=c(0,100),type='l')
+sfun <- splinefun(times,X%*%bl1)   #this creates an interpolant of the curve from min(times) to max(times)
+integrate(sfun,min(times),max(times)) #this will find the area under the curve
+#38.78534478 with absolute error < 0.003
+sfun <- splinefun(times,X%*%bl2)   #this creates an interpolant of the curve from min(times) to max(times)
+integrate(sfun,min(times),max(times))
+#40.47836735 with absolute error < 0.0035
+sfun <- splinefun(times,X%*%bl3)   #this creates an interpolant of the curve from min(times) to max(times)
+integrate(sfun,min(times),max(times))
+#26.99496756 with absolute error < 0.0025
+sfun <- splinefun(times,X%*%bl4)   #this creates an interpolant of the curve from min(times) to max(times)
+integrate(sfun,min(times),max(times))
+#41.83938247 with absolute error < 0.0043
+
+
+
+
 
 
 
@@ -141,6 +162,8 @@ p5 <- 1/(1+exp(-b[1]-b[2]*d))
 b <- mclustF$parameters$mean[,6]
 p6 <- 1/(1+exp(-b[1]-b[2]*d))
 
+###cluster 4#####
+
 
 plot(d,p1,xlab="lung capacity",ylab="Probability",type='l',col = 1,lwd=2,ylim=c(0,1))
 lines(d,p2,col=2,lwd=2)
@@ -148,4 +171,4 @@ lines(d,p3,col=3,lwd=2)
 lines(d,p4,col=4,lwd=2)
 lines(d,p5,col=5,lwd=2)
 lines(d,p6,col=6,lwd=2)
-mclustF$parameters$mean[1,]
+#mclustF$parameters$mean[1,]
