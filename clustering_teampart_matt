@@ -1,0 +1,173 @@
+library(readr)
+library(splines)
+library(glmnet)
+library(leaps)
+library(factoextra)
+library(dplyr)
+
+setwd('C:\\Users\\turne\\OneDrive\\Documents\\Fall 3\\Clustering\\Final')
+load("final_data.Rdata")
+
+################### code from Moodle
+
+times <- seq(1,295)/100 # Observations in 1/100th of a second
+X <- bs(times,intercept=TRUE,df=60) #create a spline to 
+
+#model the data
+
+betas <- matrix(0,ncol=60,nrow = 6792)
+
+###########################################################
+# run a linear regression on each data set
+# here I am manipulating my data you I can cluster
+###########################################################
+
+for (ii in 1:6792){
+  temp <- lm(as.numeric(final_data[ii,6:300])~X-1) #-1 removes the natural intercept
+  betas[ii,]  <- coefficients(temp)
+}
+
+cdata <- cbind(final_data[,1:5],betas)
+
+#CONVERT EVERTYING TO 'numbers'
+cdata$AGE <- as.numeric(cdata$AGE)
+cdata$EVER_SMOKE <- as.numeric(cdata$EVER_SMOKE)
+cdata$ASTHMA <- as.numeric(cdata$ASTHMA)
+cdata$POVERTY_RATIO <- as.numeric(cdata$POVERTY_RATIO)
+
+##################### GIVEN CODE Stops
+
+#############################
+################# 1ST PART
+#############################
+
+# a) First use principal component analysis to 
+
+pcafinal <- princomp(cdata[,2:65]) #which variables to look into
+pcafinal$loadings
+pcafinal$center
+pcafinal$scores[1,]
+
+pcafinal$sdev
+# 1: 45.2117509 , 2: 31.2901007, 3: 22.3753978, 4: 17.3299734, 5: 13.0471355
+
+
+set.seed(12345)
+# Plot this 
+fviz_nbclust(pcafinal$scores, kmeans, method = "wss",k.max=20) #4 clusters
+fviz_nbclust(pcafinal$scores, kmeans, method = "silhouette",k.max=20) #2 clusters
+
+############################
+############ 2ND PART
+############################
+set.seed(12345)
+kmean_4 <- kmeans(pcafinal$scores,4)
+cdata$clust <- kmean_4$cluster
+
+# Try to understand the clusters
+############################
+#
+clusters <- list()
+for( ii in 1:4){
+  clusters[[ii]] <- cdata %>% filter(clust == ii)
+}
+
+# Find the means of each cluster to "Name them"
+x <- cbind(colMeans(cdata))
+y <- x
+for (ii in 1:4) {
+  x <- cbind(x,colMeans(clusters[[ii]])-y)
+}
+
+round(x,digits =4)
+x
+
+#view X to determine good names:
+#cluster 1= slightly older, least poverty ratio
+#cluster 2= oldest, least smokers, most asthma, 
+#cluster 3= slightly younger, highest poverty ratio
+#cluster 4= youngest, most smokers, least asthma
+
+cmeans <- matrix(colMeans(betas),60,1)
+stdev  <- matrix(apply(betas,2,sd),60,1)
+
+k_means4 <- kmeans(scale(betas),4,nstart = 25)
+
+cl1 <- matrix(k_means4$centers[1,],60,1)
+bl1 <- cl1 * stdev + cmeans
+plot(times,X%*%bl1,ylab="ML",xlab = "Time",type = 'l',lwd=2,col='red',ylim=c(0,100))
+cl2 <- matrix(k_means4$centers[2,],60,1)
+bl2 <- cl2 * stdev + cmeans
+lines(times,X%*%bl2,lwd=2,col='light blue')
+cl3 <- matrix(k_means4$centers[3,],60,1)
+bl3 <- cl3 * stdev + cmeans
+lines(times,X%*%bl3,lwd=2,col='green')
+cl4 <- matrix(k_means4$centers[4,],60,1)
+bl4 <- cl4 * stdev + cmeans
+lines(times,X%*%bl4,lwd=2,col='purple')
+
+#Looking at clusters 1,2, and 4 which clusters has the largest lung capacity?
+#which one has the least lung capacity? Describe these three groups in terms of 
+#the curves as well as the additional variables that are available in the data 
+#frame cdata. Provide figures with your descriptions.
+
+#clust 1 lowest lung capactiy.
+#clust 4 highest lung capacity.
+
+#cluster 1 = slightly older, least poverty ratio, lowest lung capacity
+#cluster 2 = oldest, least smokers, most asthma, middle lung capacity
+#cluster 4 = youngest, most smokers, least asthma, highest lung capacity
+
+times <- seq(1,295)/100
+#plot(times,X%*%beta1,ylim=c(0,100),type='l')
+sfun <- splinefun(times,X%*%bl1)   #this creates an interpolant of the curve from min(times) to max(times)
+integrate(sfun,min(times),max(times)) #this will find the area under the curve
+#38.78534478 with absolute error < 0.003
+sfun <- splinefun(times,X%*%bl2)   #this creates an interpolant of the curve from min(times) to max(times)
+integrate(sfun,min(times),max(times))
+#40.47836735 with absolute error < 0.0035
+sfun <- splinefun(times,X%*%bl3)   #this creates an interpolant of the curve from min(times) to max(times)
+integrate(sfun,min(times),max(times))
+#26.99496756 with absolute error < 0.0025
+sfun <- splinefun(times,X%*%bl4)   #this creates an interpolant of the curve from min(times) to max(times)
+integrate(sfun,min(times),max(times))
+#41.83938247 with absolute error < 0.0043
+
+#############################
+#################### 3RD PART
+#############################
+
+set.seed(12345)
+
+library(mclust)
+clustBIC <-mclustBIC(cdata[,10:20], modelNames ='VVV', G=1:20)   # This is model selection
+plot(clustBIC)
+
+mod1<-mclustBIC(cdata[,10:20], modelNames ='VVV', G=6)
+summary(mod1)
+mclustF = Mclust(cdata[,10:20], x = mod1)
+#summary(mod1_apply, parameters = TRUE)
+
+
+d <- seq(0,1,0.01)
+b <- mclustF$parameters$mean[,1]
+p1 <- 1/(1+exp(-b[1]-b[2]*d))
+b <- mclustF$parameters$mean[,2]
+p2 <- 1/(1+exp(-b[1]-b[2]*d))
+b <- mclustF$parameters$mean[,3]
+p3 <- 1/(1+exp(-b[1]-b[2]*d))
+b <- mclustF$parameters$mean[,4]
+p4 <- 1/(1+exp(-b[1]-b[2]*d))
+b <- mclustF$parameters$mean[,5]
+p5 <- 1/(1+exp(-b[1]-b[2]*d))
+b <- mclustF$parameters$mean[,6]
+p6 <- 1/(1+exp(-b[1]-b[2]*d))
+
+
+plot(d,p1,xlab="lung capacity",ylab="Probability",type='l',col = 1,lwd=2,ylim=c(0,1))
+lines(d,p2,col=2,lwd=2)
+lines(d,p3,col=3,lwd=2)
+lines(d,p4,col=4,lwd=2)
+lines(d,p5,col=5,lwd=2)
+lines(d,p6,col=6,lwd=2)
+mclustF$parameters$mean[1,]
