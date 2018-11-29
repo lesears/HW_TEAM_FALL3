@@ -117,6 +117,8 @@ library(mclust)
 clustBIC <-mclustBIC(cdata[,10:20], modelNames ='VVV', G=1:20)   # This is model selection
 plot(clustBIC)
 
+set.seed(12345)
+
 mod1<-mclustBIC(cdata[,10:20], modelNames ='VVV', G=6)
 summary(mod1)
 mclustF = Mclust(cdata[,10:20], x = mod1)
@@ -133,13 +135,13 @@ for (i in 1:6){
   meancurve[[i]] <- colMeans(mclusters[[i]][,2:65])
 }
 
-d <- seq(2,65,1)
-plot(d,meancurve[[1]],xlab = "Column Number",ylab = "Column Mean",type = 'l',col=1,lwd=2,ylim = c(0,90))
-lines(d,meancurve[[2]],col=2,lwd=2)
-lines(d,meancurve[[3]],col=3,lwd=2)
-lines(d,meancurve[[4]],col=4,lwd=2)
-lines(d,meancurve[[5]],col=5,lwd=2)
-lines(d,meancurve[[6]],col=6,lwd=2)
+d <- seq(from = 0, by = (3/64), length.out = 64)
+plot(d,meancurve[[1]],xlab = "Time",ylab = "ML",type = 'l',col=1,lwd=2,ylim = c(0,90))
+lines(d,meancurve[[2]],col=2,lwd=2)#red
+lines(d,meancurve[[3]],col=3,lwd=2)#green
+lines(d,meancurve[[4]],col=4,lwd=2)#blue
+lines(d,meancurve[[5]],col=5,lwd=2)#teal
+lines(d,meancurve[[6]],col=6,lwd=2)#purple
 
 
 
